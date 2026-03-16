@@ -1,0 +1,17 @@
+[project]
+name = "autocommitbot"
+version = "1.0.0"
+description = "Automatic GitHub commit bot that logs developer activity."
+authors = [
+  {name = "Rohit"}
+]
+
+dependencies = [
+    "typer",
+    "rich",
+    "requests",
+    "gitpython"
+]
+
+[project.scripts]
+autocommit = "cli:app"

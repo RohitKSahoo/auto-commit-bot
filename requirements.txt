@@ -1,0 +1,6 @@
+requests
+typer
+rich
+questionary
+gitpython
+requests
