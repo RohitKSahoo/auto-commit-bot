@@ -1,10 +1,8 @@
 [project]
 name = "autocommitbot"
-version = "1.0.0"
+version = "1.0.1"
 description = "Automatic GitHub commit bot that logs developer activity."
-authors = [
-  {name = "Rohit"}
-]
+authors = [{name="Rohit"}]
 
 dependencies = [
     "typer",
@@ -14,4 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-autocommit = "cli:app"
+autocommit = "autocommitbot.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
