@@ -189,5 +189,6 @@ def run_setup():
     for path in repo_paths:
         print("-", path)
 
-    # Create startup scheduler
-    create_startup_task()
+from autocommitbot.scheduler import create_startup_task
+
+create_startup_task()

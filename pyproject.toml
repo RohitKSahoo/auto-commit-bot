@@ -1,8 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
 [project]
 name = "autocommitbot"
-version = "1.0.1"
+version = "1.1.1"
 description = "Automatic GitHub commit bot that logs developer activity."
-authors = [{name="Rohit"}]
+readme = "README.md"
+requires-python = ">=3.8"
+
+authors = [
+    { name = "Rohit" }
+]
 
 dependencies = [
     "typer",
@@ -11,8 +21,10 @@ dependencies = [
     "gitpython"
 ]
 
+
 [project.scripts]
 autocommit = "autocommitbot.cli:app"
+
 
 [tool.setuptools.packages.find]
 where = ["."]
