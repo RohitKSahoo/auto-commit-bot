@@ -89,7 +89,8 @@ def run_bot():
         result = subprocess.run(
             ["git", "-C", path, "status", "--porcelain"],
             capture_output=True,
-            text=True
+            text=True,
+            stdin=subprocess.DEVNULL
         )
         if result.stdout.strip():
             repos_with_changes.append(path)
@@ -100,8 +101,16 @@ def run_bot():
             print("Committing uncommitted user changes for:", repo_path)
             os.chdir(repo_path)
             
-            subprocess.run(["git", "add", "."])
-            
+            add_process = subprocess.run(
+                ["git", "add", "."], 
+                capture_output=True, 
+                text=True, 
+                stdin=subprocess.DEVNULL
+            )
+            if add_process.returncode != 0:
+                print(f"Git add failed: {add_process.stderr.strip()}")
+                continue
+
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_message = f"Auto commit of user changes | {timestamp}"
             
@@ -110,14 +119,15 @@ def run_bot():
             commit_process = subprocess.run(
                 ["git", "commit", "-m", commit_message],
                 capture_output=True,
-                text=True
+                text=True,
+                stdin=subprocess.DEVNULL
             )
             
             if "nothing to commit" in commit_process.stdout.lower():
                 print("Nothing new to commit.")
                 continue
                 
-            push_process = subprocess.run(["git", "push"], capture_output=True, text=True)
+            push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
             
             if push_process.returncode == 0:
                 print("Commit pushed successfully.")
@@ -147,19 +157,28 @@ def run_bot():
 
         print("Commit message:", commit_message)
 
-        subprocess.run(["git", "add", SAFE_FILE])
+        add_process = subprocess.run(
+            ["git", "add", SAFE_FILE], 
+            capture_output=True, 
+            text=True, 
+            stdin=subprocess.DEVNULL
+        )
+        if add_process.returncode != 0:
+            print(f"Git add failed: {add_process.stderr.strip()}")
+            return
 
         commit_process = subprocess.run(
             ["git", "commit", "-m", commit_message],
             capture_output=True,
-            text=True
+            text=True,
+            stdin=subprocess.DEVNULL
         )
 
         if "nothing to commit" in commit_process.stdout.lower():
             print("Nothing new to commit.")
             return
 
-        push_process = subprocess.run(["git", "push"], capture_output=True, text=True)
+        push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
 
         if push_process.returncode == 0:
             print("Commit pushed successfully.")
