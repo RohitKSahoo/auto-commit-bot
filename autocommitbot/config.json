@@ -1,0 +1,14 @@
+{
+    "repositories": [
+        "D:\\PR\\Dice_rolling_game",
+        "D:\\PR\\FirstApp",
+        "D:\\PR\\ImageResizer",
+        "D:\\PR\\PDFMerger",
+        "D:\\PR\\Portfolio",
+        "D:\\PR\\Robo_Speaker",
+        "D:\\PR\\SlotMachine",
+        "D:\\PR\\WeatherApp"
+    ],
+    "schedule_type": "onlogon",
+    "schedule_time": null
+}

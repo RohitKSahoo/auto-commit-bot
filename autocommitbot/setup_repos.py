@@ -2,6 +2,8 @@ import requests
 import json
 import os
 import subprocess
+import questionary
+import random
 
 from autocommitbot.scheduler import create_startup_task
 
@@ -40,6 +42,12 @@ def check_git_auth(repo_path):
 def run_setup():
     """Main setup routine"""
 
+    from autocommitbot.scheduler import is_admin, request_admin_and_exit
+    
+    if not is_admin():
+        request_admin_and_exit()
+        return
+
     print("\nAUTO COMMIT BOT SETUP\n")
 
     # ---------------------------------------------------------
@@ -74,37 +82,39 @@ def run_setup():
         return
 
     # ---------------------------------------------------------
-    # Step 2: Display repositories
+    # Step 2: Select repos interactively
     # ---------------------------------------------------------
 
-    print("\nRepositories found:\n")
+    repo_names = [repo["name"] for repo in repos]
+    
+    from rich.console import Console
+    console = Console()
+    console.print("\n[bold cyan]Navigation Instructions:[/bold cyan]")
+    console.print("  [bold yellow]↑/↓[/bold yellow]     : Move cursor up and down")
+    console.print("  [bold green]Space[/bold green]   : Select or deselect a repository")
+    console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your final selection\n")
 
-    repo_names = []
+    # Custom styling for the selector question
+    custom_style = questionary.Style([
+        ('qmark', 'fg:#00ffff bold'),
+        ('question', 'bold'),
+        ('selected', 'fg:#00ff00 bold'),
+        ('pointer', 'fg:#00ffff bold'),
+        ('highlighted', 'fg:#00ffff bold'),
+        ('answer', 'fg:#00ff00 bold'),
+    ])
 
-    for i, repo in enumerate(repos):
-        print(f"{i+1}. {repo['name']}")
-        repo_names.append(repo["name"])
+    selected_repos = questionary.checkbox(
+        "Select repositories to automate:",
+        choices=repo_names,
+        qmark="?",
+        instruction=" ",
+        style=custom_style
+    ).ask()
 
-    # ---------------------------------------------------------
-    # Step 3: Select repos
-    # ---------------------------------------------------------
-
-    print("\nSelect repositories to automate (comma separated numbers)")
-    selection = input("Example: 1,3,5 : ")
-
-    try:
-        indexes = [int(x.strip()) - 1 for x in selection.split(",")]
-    except Exception:
-        print("Invalid selection format.")
+    if not selected_repos:
+        print("No repositories selected.")
         return
-
-    selected_repos = []
-
-    for i in indexes:
-        if i < 0 or i >= len(repo_names):
-            print("Invalid repository number:", i + 1)
-            return
-        selected_repos.append(repo_names[i])
 
     # ---------------------------------------------------------
     # Step 4: Ask base folder
@@ -168,11 +178,49 @@ def run_setup():
     print("Git authentication verified.\n")
 
     # ---------------------------------------------------------
-    # Step 7: Save configuration
+    # Step 7: Select Schedule
+    # ---------------------------------------------------------
+
+    console.print("\n[bold cyan]Schedule Selection:[/bold cyan]")
+    console.print("  [bold yellow]↑/↓[/bold yellow]     : Move cursor up and down")
+    console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your schedule option\n")
+
+    schedule_choice = questionary.select(
+        "When do you want AutoCommitBot to run automatically?",
+        choices=[
+            "When I log in to my system (ONLOGON)",
+            "At a specific time of day",
+            "At a random time (daily)"
+        ],
+        qmark="?",
+        instruction=" ",
+        style=custom_style
+    ).ask()
+
+    schedule_type = "onlogon"
+    schedule_time = None
+
+    if schedule_choice == "At a specific time of day":
+        schedule_time = questionary.text(
+            "Enter the time (24-hour format HH:MM, e.g. 14:30):",
+            validate=lambda x: len(x) == 5 and x[2] == ':' and x[:2].isdigit() and x[3:].isdigit() and int(x[:2]) < 24 and int(x[3:]) < 60
+        ).ask()
+        schedule_type = "time"
+    elif schedule_choice == "At a random time (daily)":
+        hh = random.randint(9, 23)
+        mm = random.randint(0, 59)
+        schedule_time = f"{hh:02d}:{mm:02d}"
+        schedule_type = "time"
+        print(f"Randomly picked {schedule_time} as your daily commit time!")
+
+    # ---------------------------------------------------------
+    # Step 8: Save configuration
     # ---------------------------------------------------------
 
     config = {
-        "repositories": repo_paths
+        "repositories": repo_paths,
+        "schedule_type": schedule_type,
+        "schedule_time": schedule_time
     }
 
     with open(CONFIG_FILE, "w") as f:
@@ -189,6 +237,5 @@ def run_setup():
     for path in repo_paths:
         print("-", path)
 
-from autocommitbot.scheduler import create_startup_task
-
-create_startup_task()
+    print("\nCreating startup scheduler...")
+    create_startup_task()

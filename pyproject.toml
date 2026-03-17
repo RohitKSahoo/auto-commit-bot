@@ -18,7 +18,9 @@ dependencies = [
     "typer",
     "rich",
     "requests",
-    "gitpython"
+    "gitpython",
+    "questionary",
+    "pyfiglet"
 ]
 
 

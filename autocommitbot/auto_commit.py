@@ -79,43 +79,92 @@ def run_bot():
         print("No repositories configured.")
         return
 
-    repo_path = random.choice(repos)
+    repos_with_changes = []
 
-    print("Selected repository:", repo_path)
+    for path in repos:
+        git_folder = os.path.join(path, ".git")
+        if not os.path.isdir(git_folder):
+            continue
 
-    git_folder = os.path.join(repo_path, ".git")
+        result = subprocess.run(
+            ["git", "-C", path, "status", "--porcelain"],
+            capture_output=True,
+            text=True
+        )
+        if result.stdout.strip():
+            repos_with_changes.append(path)
 
-    if not os.path.isdir(git_folder):
-        print("Selected folder is not a git repository:", repo_path)
-        return
-
-    os.chdir(repo_path)
-
-    with open(SAFE_FILE, "a") as f:
-        f.write(f"automation activity: {datetime.datetime.now()}\n")
-
-    commit_message = random.choice(commit_messages)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    commit_message = f"{commit_message} | {timestamp}"
-
-    print("Commit message:", commit_message)
-
-    subprocess.run(["git", "add", SAFE_FILE])
-
-    commit_process = subprocess.run(
-        ["git", "commit", "-m", commit_message],
-        capture_output=True,
-        text=True
-    )
-
-    if "nothing to commit" in commit_process.stdout.lower():
-        print("Nothing new to commit.")
-        return
-
-    push_process = subprocess.run(["git", "push"], capture_output=True, text=True)
-
-    if push_process.returncode == 0:
-        print("Commit pushed successfully.")
+    if repos_with_changes:
+        print(f"Found uncommitted changes in {len(repos_with_changes)} repositories.")
+        for repo_path in repos_with_changes:
+            print("Committing uncommitted user changes for:", repo_path)
+            os.chdir(repo_path)
+            
+            subprocess.run(["git", "add", "."])
+            
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            commit_message = f"Auto commit of user changes | {timestamp}"
+            
+            print("Commit message:", commit_message)
+            
+            commit_process = subprocess.run(
+                ["git", "commit", "-m", commit_message],
+                capture_output=True,
+                text=True
+            )
+            
+            if "nothing to commit" in commit_process.stdout.lower():
+                print("Nothing new to commit.")
+                continue
+                
+            push_process = subprocess.run(["git", "push"], capture_output=True, text=True)
+            
+            if push_process.returncode == 0:
+                print("Commit pushed successfully.")
+            else:
+                print("Push failed.")
     else:
-        print("Push failed.")
+        print("All changes are already committed. Performing a random activity commit.")
+        repo_path = random.choice(repos)
+
+        print("Selected repository:", repo_path)
+
+        git_folder = os.path.join(repo_path, ".git")
+
+        if not os.path.isdir(git_folder):
+            print("Selected folder is not a git repository:", repo_path)
+            return
+
+        os.chdir(repo_path)
+
+        with open(SAFE_FILE, "a") as f:
+            f.write(f"automation activity: {datetime.datetime.now()}\n")
+
+        commit_message = random.choice(commit_messages)
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        commit_message = f"{commit_message} | {timestamp}"
+
+        print("Commit message:", commit_message)
+
+        subprocess.run(["git", "add", SAFE_FILE])
+
+        commit_process = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            capture_output=True,
+            text=True
+        )
+
+        if "nothing to commit" in commit_process.stdout.lower():
+            print("Nothing new to commit.")
+            return
+
+        push_process = subprocess.run(["git", "push"], capture_output=True, text=True)
+
+        if push_process.returncode == 0:
+            print("Commit pushed successfully.")
+        else:
+            print("Push failed.")
+
+if __name__ == "__main__":
+    run_bot()
