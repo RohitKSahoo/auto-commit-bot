@@ -1,44 +1,128 @@
 import os
 import sys
+import ctypes
+import subprocess
 
-STARTUP_FILE = "autocommitbot_startup.vbs"
+TASK_NAME = "AutoCommitBot"
 
 
-def get_startup_folder():
-    """Return the Windows Startup folder path."""
-    return os.path.join(
-        os.getenv("APPDATA"),
-        r"Microsoft\Windows\Start Menu\Programs\Startup"
-    )
+def is_admin():
+    """Check if the script is running with administrative privileges."""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()  # type: ignore
+    except:
+        return False
 
+
+def request_admin_and_exit():
+    """Relaunches the script as administrator in a new window."""
+    print("Requesting administrator privileges...")
+    
+    executable = sys.executable
+    args = " ".join([f'"{a}"' if ' ' in a else a for a in sys.argv[1:]])  # type: ignore
+    
+    # We force the new process to always use the module invocation
+    # instead of the potentially broken pip-installed script path.
+    command_to_run = f'"{executable}" -m autocommitbot.cli {args}'
+        
+    # Launch via cmd.exe /c and pause so the user can see the status before the window closes
+    cmd_args = f'/c "{command_to_run} & pause"'
+    
+    try:
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", cmd_args, None, 1)  # type: ignore
+    except Exception as e:
+        print(f"Failed to elevate privileges: {e}")
+        
+    sys.exit(0)
+
+
+import json
+
+def get_schedule_settings():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(base_dir, "config.json")
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                c = json.load(f)
+                return c.get("schedule_type", "onlogon"), c.get("schedule_time", None)
+    except:
+        pass
+    return "onlogon", None
 
 def create_startup_task():
-    """Create a silent startup launcher using VBScript."""
+    """Create a Windows Task Scheduler task."""
+    if not is_admin():
+        request_admin_and_exit()
+        return
 
     python_path = sys.executable
-    startup_folder = get_startup_folder()
-    script_path = os.path.join(startup_folder, STARTUP_FILE)
+    # The command needs to run the auto_commit module
+    command = f'"{python_path}" -m autocommitbot.auto_commit'
 
-    # We use Chr(34) to safely wrap the Python path in quotes for VBScript
-    vbs_content = f'''
-Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run Chr(34) & "{python_path}" & Chr(34) & " -m autocommitbot.auto_commit", 0, False
-Set WshShell = Nothing
-'''
+    schedule_type, schedule_time = get_schedule_settings()
 
-    with open(script_path, "w", encoding="utf-8") as f:
-        f.write(vbs_content.strip())
+    print("Creating Task Scheduler task: AutoCommitBot...")
 
-    print("Startup launcher created successfully.")
-    print(f"Location: {script_path}")
+    # schtasks command to create a task with highest privileges
+    schtasks_cmd = [
+        "schtasks", "/Create",
+        "/TN", TASK_NAME,
+        "/TR", command,
+        "/RL", "HIGHEST",
+        "/F"
+    ]
+
+    if schedule_type == "time" and schedule_time:
+        schtasks_cmd.extend(["/SC", "DAILY", "/ST", schedule_time])
+        print(f"Scheduling to run daily at: {schedule_time}")
+    elif schedule_type == "random_day_time":
+        schtasks_cmd.extend(["/SC", "MINUTE", "/MO", "60"])
+        print("Scheduling to run periodically in the background (will organically vary commits).")
+    else:
+        schtasks_cmd.extend(["/SC", "ONLOGON"])
+        print("Scheduling to run on Logon.")
+
+    try:
+        subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
+        print("Startup task scheduled successfully via Task Scheduler.")
+        
+        print("Configuring task to run on battery power...")
+        ps_script = (
+            f"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries "
+            f"-DontStopIfGoingOnBatteries; "
+            f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings $settings"
+        )
+        ps_cmd = ["powershell", "-NoProfile", "-Command", ps_script]
+        
+        try:
+            subprocess.run(ps_cmd, capture_output=True, text=True, check=True)
+            print("Task configured to run even when on battery power.")
+        except subprocess.CalledProcessError as e:
+            print("Warning: Could not configure the task to run on battery power:")
+            print(e.stderr.strip())
+
+    except subprocess.CalledProcessError as e:
+        print("Failed to create scheduled task:")
+        print(e.stderr.strip())
+
 
 def remove_startup_task():
-    """Remove the VBScript startup launcher."""
-    startup_folder = get_startup_folder()
-    script_path = os.path.join(startup_folder, STARTUP_FILE)
+    """Remove the Windows Task Scheduler task."""
+    if not is_admin():
+        request_admin_and_exit()
+        return
 
-    if os.path.exists(script_path):
-        os.remove(script_path)
-        print("Startup launcher removed.")
-    else:
-        print("Startup launcher not found.")
+    print("Removing Task Scheduler task: AutoCommitBot...")
+
+    schtasks_cmd = [
+        "schtasks", "/Delete",
+        "/TN", TASK_NAME,
+        "/F"
+    ]
+
+    try:
+        subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
+        print("Startup task removed successfully from Task Scheduler.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to remove scheduled task. It might not exist.")
