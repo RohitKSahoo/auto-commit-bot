@@ -1,6 +1,0 @@
-print("Hello world this is rohit kumar sahoo")
-print("Hello world this is rohit kumar sahoo")
-print("Hello world this is rohit kumar sahoo")
-print("Hello world this is rohit kumar sahoo")
-print("Hello world this is rohit kumar sahoo")
-print("Hello world this is rohit kumar sahoo")
