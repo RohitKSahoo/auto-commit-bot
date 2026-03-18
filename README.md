@@ -101,6 +101,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 * Add/remove repositories dynamically
 * Persistent history tracking (500 entries)
 * Clean uninstall command — removes scheduler task before uninstalling
+* Version check command — shows installed version and detects available updates
 
 ---
 
@@ -179,6 +180,37 @@ pip install autocommitbot
 * `run` is for manual triggering, not regular use
 * Internet connection required for full functionality
 * Always use `autocommit uninstall` instead of `pip uninstall` directly — running pip uninstall alone will leave an orphaned task in Windows Task Scheduler that silently fails on every trigger
+
+---
+
+## 🔄 Staying Up to Date
+
+Run the following command to check your current version and see if a newer release is available:
+
+```bash
+autocommit version
+```
+
+Example output when up to date:
+```
+AutoCommitBot  v1.1.6
+Checking for updates...
+✔ You are on the latest version (1.1.6).
+```
+
+Example output when an update is available:
+```
+AutoCommitBot  v1.1.5
+Checking for updates...
+⚡ New version available: 1.1.6 (you have 1.1.5)
+Run to update:  pip install --upgrade autocommitbot
+```
+
+To update manually at any time:
+
+```bash
+pip install --upgrade autocommitbot
+```
 
 ---
 

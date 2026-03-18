@@ -7,6 +7,8 @@ import sys
 import zipfile
 import datetime
 import subprocess
+import requests
+from importlib.metadata import version as get_version, PackageNotFoundError
 
 from autocommitbot.setup_repos import run_setup
 from autocommitbot.auto_commit import run_bot
@@ -420,6 +422,37 @@ def uninstall():
         console.print("[dim]Your cloned repositories and their files have NOT been deleted.[/dim]")
     else:
         console.print(f"[red]pip uninstall failed:[/red] {result.stderr.strip()}")
+
+
+@app.command()
+def version():
+    """Show installed version and check for updates"""
+    try:
+        installed = get_version("autocommitbot")
+    except PackageNotFoundError:
+        console.print("[red]Could not determine installed version.[/red]")
+        return
+
+    console.print(f"\n[bold cyan]AutoCommitBot[/bold cyan]  v{installed}")
+
+    # Check PyPI for the latest version
+    console.print("[dim]Checking for updates...[/dim]")
+    try:
+        response = requests.get(
+            "https://pypi.org/pypi/autocommitbot/json",
+            timeout=5
+        )
+        if response.status_code == 200:
+            latest = response.json()["info"]["version"]
+            if latest == installed:
+                console.print(f"[green]✔ You are on the latest version ({installed}).[/green]\n")
+            else:
+                console.print(f"[yellow]⚡ New version available: [bold]{latest}[/bold] (you have {installed})[/yellow]")
+                console.print(f"[dim]Run to update:[/dim] [bold cyan]pip install --upgrade autocommitbot[/bold cyan]\n")
+        else:
+            console.print("[dim]Could not reach PyPI to check for updates.[/dim]\n")
+    except Exception:
+        console.print("[dim]Could not reach PyPI to check for updates.[/dim]\n")
 
 
 if __name__ == "__main__":
