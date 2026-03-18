@@ -8,6 +8,7 @@ import random
 import zipfile
 import shutil
 import requests
+import re
 
 
 
@@ -169,6 +170,33 @@ def wait_for_internet(max_attempts=12):
     print("Internet detected")
     return True
 
+# --- Secret Shield Configuration ---
+SENSITIVE_FILES = [".env", "secrets.json", "*.key", "*.pem", "*.db"]
+SENSITIVE_PATTERNS = [r"AIzaSy[A-Za-z0-9_-]{33}", r"sk-[A-Za-z0-9]{48}"]
+
+def shield_sensitive_data(repo_path):
+    """Safety check to prevent pushing secrets"""
+    # 1. Update .gitignore
+    gitignore = os.path.join(repo_path, ".gitignore")
+    existing = ""
+    if os.path.exists(gitignore):
+        with open(gitignore, "r") as f: existing = f.read()
+    
+    to_add = [f for f in SENSITIVE_FILES if f not in existing]
+    if to_add:
+        with open(gitignore, "a") as f:
+            for item in to_add: f.write(f"\n{item}")
+
+    # 2. Key Scanning
+    try:
+        diff = subprocess.run(["git", "diff", "--cached"], cwd=repo_path, capture_output=True, text=True).stdout
+        for pattern in SENSITIVE_PATTERNS:
+            if re.search(pattern, diff):
+                print(f"[SHIELD ALERT] Potential Secret Detected! Commit Aborted.")
+                return False
+    except Exception: pass
+    return True
+
 def generate_ai_commit_message(repo_path, fallback_message, config):
     if not config.get("use_ai") or not config.get("gemini_key"):
         return fallback_message
@@ -302,6 +330,10 @@ def run_bot(force_run=False):
             
             os.chdir(repo_path)
             
+            # Universal Shield
+            if not shield_sensitive_data(repo_path):
+                continue
+
             add_process = subprocess.run(
                 ["git", "add", "."], 
                 capture_output=True, 

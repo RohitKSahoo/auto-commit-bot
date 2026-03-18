@@ -358,8 +358,21 @@ def restore():
             zipf.extractall(repo_path)
             
         console.print("[green]✔ Files successfully restored from snapshot![/green]")
-        console.print("[cyan]The files on your disk have traveled back in time to exactly how they were before you pushed this commit.[/cyan]")
-        console.print("[dim]You can now safely make your changes and use standard `git add/commit/push` to overwrite the bad commit.[/dim]")
+        
+        # New Universal Undo: Automatically sync the restore to GitHub
+        console.print("[yellow]Syncing restored state to GitHub...[/yellow]")
+        os.chdir(repo_path)
+        subprocess.run(["git", "add", "."], capture_output=True)
+        undo_msg = f"Undo/Restore to snapshot from {selected['timestamp']}"
+        subprocess.run(["git", "commit", "-m", undo_msg], capture_output=True)
+        
+        push_res = subprocess.run(["git", "push", "--force"], capture_output=True, text=True)
+        
+        if push_res.returncode == 0:
+            console.print("[bold green]✔ SUCCESS![/bold green] Your repository (local and GitHub) has been rolled back.")
+        else:
+            console.print(f"[red]Restored locally, but GitHub push failed: {push_res.stderr.strip()}[/red]")
+            console.print("[dim]You may need to manually 'git push --force' if your branch is protected.[/dim]")
 
     except ValueError:
         console.print("[red]Invalid input.[/red]")
