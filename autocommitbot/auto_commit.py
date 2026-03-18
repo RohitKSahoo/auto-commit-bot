@@ -346,6 +346,10 @@ def run_bot(force_run=False):
         if not os.path.isdir(git_folder):
             continue
 
+        # --- SAFETY FIRST: Run Secret Shield BEFORE anything else ---
+        # This ensures we fix vulnerabilities even if there are no code changes
+        shield_sensitive_data(path)
+
         result = subprocess.run(
             ["git", "-C", path, "status", "--porcelain"],
             capture_output=True,
@@ -367,10 +371,6 @@ def run_bot(force_run=False):
             snapshot_file = take_snapshot(repo_path)
             
             os.chdir(repo_path)
-            
-            # Universal Shield
-            if not shield_sensitive_data(repo_path):
-                continue
 
             add_process = subprocess.run(
                 ["git", "add", "."], 
