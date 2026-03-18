@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: autocommitbot
-Version: 1.2.1
+Version: 1.2.2
 Summary: Automatic GitHub commit bot that logs developer activity.
 Author: Rohit
 Requires-Python: >=3.8
@@ -12,7 +12,7 @@ Requires-Dist: gitpython
 Requires-Dist: questionary
 Requires-Dist: pyfiglet
 
-# 🚀 AutoCommitBot (v1.2.1)
+# 🚀 AutoCommitBot (v1.2.2)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -50,9 +50,8 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 * **Security Layer (Secret Shield)** — Automatic protection against sensitive file and credential exposure
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
-* **Repository Management** — GitHub repo discovery, selection, and automatic cloning
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
-* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks
+* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks and much more... Check Below 👇🏻
 
 
 <details>
@@ -93,6 +92,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ### 🤖 AI Commit System
 
 * Gemini AI integration for commit messages
+* **AI Key Validation** — Real-time verification of your API key during setup
 * Model fallback chain: 2.5 Flash → 2.0 Flash → 1.5 Flash → Pro
 * Diff truncation for large inputs (8000 chars)
 
@@ -181,9 +181,10 @@ All commands follow the pattern: `autocommit <command>`
 
 | Command | What it does |
 |---|---|
-| `autocommit setup` | First-time wizard: repos, schedule & AI |
-| `autocommit set-schedule` | Change when the bot runs |
+| `autocommit setup` | First-time wizard, **or** edit repos / schedule / AI |
 | `autocommit config-backup <days>` | Set how long backups are kept |
+
+> **Tip:** Running `autocommit setup` again on a configured machine shows a short menu so you can update just one section (Repositories, Schedule, or AI key) without repeating the full wizard.
 
 ### 📁 Repositories
 

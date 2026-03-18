@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.2.1)
+# 🚀 AutoCommitBot (v1.2.2)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -33,14 +33,11 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ### Core Capabilities
 
 * **AI Commit Generation** — Context-aware commit messages using Gemini with model fallback
-* **AI Key Validation** — Real-time verification of your Gemini API key during setup
 * **Security Layer (Secret Shield)** — Automatic protection against sensitive file and credential exposure
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
-* **Repository Management** — GitHub repo discovery, selection, and automatic cloning
-* **Smart Re-Configuration** — `autocommit setup` doubles as an editor for any configuration section
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
-* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks
+* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks and much more... Check Below 👇🏻
 
 
 <details>
