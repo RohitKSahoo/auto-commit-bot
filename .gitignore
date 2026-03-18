@@ -3,6 +3,11 @@
 
 .env
 secrets.json
+credentials.json
 *.key
 *.pem
 *.db
+*.sqlite
+config.json
+history.json
+backups/

@@ -171,7 +171,11 @@ def wait_for_internet(max_attempts=12):
     return True
 
 # --- Secret Shield Configuration ---
-SENSITIVE_FILES = [".env", "secrets.json", "*.key", "*.pem", "*.db"]
+SENSITIVE_FILES = [
+    ".env", "secrets.json", "credentials.json", 
+    "*.key", "*.pem", "*.db", "*.sqlite", 
+    "config.json", "history.json", "backups/"
+]
 SENSITIVE_PATTERNS = [r"AIzaSy[A-Za-z0-9_-]{33}", r"sk-[A-Za-z0-9]{48}"]
 
 def shield_sensitive_data(repo_path):
