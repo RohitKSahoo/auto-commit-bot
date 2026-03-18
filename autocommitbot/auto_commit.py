@@ -211,7 +211,14 @@ def shield_sensitive_data(repo_path):
     # 3. Key Scanning (Purely informative if found in tracked files)
     try:
         # Check staged changes
-        diff = subprocess.run(["git", "diff", "--cached"], cwd=repo_path, capture_output=True, text=True).stdout
+        diff = subprocess.run(
+            ["git", "diff", "--cached"], 
+            cwd=repo_path, 
+            capture_output=True, 
+            text=True, 
+            encoding='utf-8', 
+            errors='ignore'
+        ).stdout
         for pattern in SENSITIVE_PATTERNS:
             if re.search(pattern, diff):
                 print(f"[SHIELD WARNING] ⚠️  I detected an API Key pattern inside one of your files!")
@@ -230,7 +237,9 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
             ["git", "diff", "--cached"],
             cwd=repo_path,
             capture_output=True,
-            text=True
+            text=True,
+            encoding='utf-8',
+            errors='ignore'
         )
         diff_text = diff_process.stdout.strip()
         
@@ -337,6 +346,8 @@ def run_bot(force_run=False):
             ["git", "-C", path, "status", "--porcelain"],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='ignore',
             stdin=subprocess.DEVNULL
         )
         if result.stdout.strip():
