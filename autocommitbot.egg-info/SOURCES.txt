@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 autocommitbot/__init__.py
 autocommitbot/auto_commit.py

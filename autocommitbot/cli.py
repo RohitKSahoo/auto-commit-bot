@@ -3,6 +3,7 @@ from rich.console import Console
 from rich.table import Table
 import json
 import os
+import sys
 import zipfile
 import datetime
 import subprocess
@@ -49,6 +50,7 @@ def main(ctx: typer.Context):
         table.add_row("autocommit dashboard", "View history of all automated commits and system stats")
         table.add_row("autocommit restore", "Undo a bot commit by restoring the physical file backups")
         table.add_row("autocommit config-backup", "Configure how many days backup snapshots are kept")
+        table.add_row("autocommit uninstall", "Remove the scheduler task and fully uninstall the bot")
         
         console.print(table)
         
@@ -376,6 +378,49 @@ def restore():
 
     except ValueError:
         console.print("[red]Invalid input.[/red]")
+
+
+@app.command()
+def uninstall():
+    """Remove the scheduler task and fully uninstall AutoCommitBot"""
+    console.print("[bold red]\n⚠ AutoCommitBot Uninstall[/bold red]\n")
+    console.print("This will:")
+    console.print("  [yellow]1.[/yellow] Remove the AutoCommitBot task from Windows Task Scheduler")
+    console.print("  [yellow]2.[/yellow] Uninstall the autocommitbot package via pip\n")
+
+    import builtins
+    confirm = builtins.input("Are you sure you want to uninstall? (yes/N): ").strip().lower()
+    if confirm != "yes":
+        console.print("[yellow]Uninstall cancelled.[/yellow]")
+        return
+
+    # Step 1: Remove the scheduler task
+    console.print("\n[cyan]Step 1: Removing Task Scheduler entry...[/cyan]")
+    try:
+        from autocommitbot.scheduler import remove_startup_task, is_admin, request_admin_and_exit
+        if not is_admin():
+            console.print("[yellow]Administrator privileges required. Re-launching as admin...[/yellow]")
+            request_admin_and_exit()
+            return
+        remove_startup_task()
+        console.print("[green]✔ Scheduler task removed.[/green]")
+    except Exception as e:
+        console.print(f"[red]Could not remove scheduler task: {e}[/red]")
+        console.print("[dim]You can remove it manually: open Task Scheduler and delete 'AutoCommitBot'.[/dim]")
+
+    # Step 2: Uninstall the package
+    console.print("\n[cyan]Step 2: Uninstalling autocommitbot package...[/cyan]")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "autocommitbot", "-y"],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode == 0:
+        console.print("[bold green]✔ autocommitbot successfully uninstalled.[/bold green]")
+        console.print("[dim]Your cloned repositories and their files have NOT been deleted.[/dim]")
+    else:
+        console.print(f"[red]pip uninstall failed:[/red] {result.stderr.strip()}")
+
 
 if __name__ == "__main__":
     app()
