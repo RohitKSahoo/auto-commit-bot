@@ -76,6 +76,9 @@ def create_startup_task():
     if schedule_type == "time" and schedule_time:
         schtasks_cmd.extend(["/SC", "DAILY", "/ST", schedule_time])
         print(f"Scheduling to run daily at: {schedule_time}")
+    elif schedule_type == "random_day_time":
+        schtasks_cmd.extend(["/SC", "MINUTE", "/MO", "60"])
+        print("Scheduling to run periodically in the background (will organically vary commits).")
     else:
         schtasks_cmd.extend(["/SC", "ONLOGON"])
         print("Scheduling to run on Logon.")

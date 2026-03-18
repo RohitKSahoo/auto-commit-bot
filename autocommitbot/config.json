@@ -1,14 +1,13 @@
 {
     "repositories": [
-        "D:\\PR\\Dice_rolling_game",
-        "D:\\PR\\FirstApp",
-        "D:\\PR\\ImageResizer",
-        "D:\\PR\\PDFMerger",
-        "D:\\PR\\Portfolio",
-        "D:\\PR\\Robo_Speaker",
-        "D:\\PR\\SlotMachine",
-        "D:\\PR\\WeatherApp"
+        "D:\\Projects\\Robo_Speaker",
+        "D:\\Projects\\RPS_game",
+        "D:\\Projects\\SlotMachine",
+        "D:\\Projects\\WeatherApp",
+        "D:\\Projects\\auto-commit-trial\\auto-commit-bot"
     ],
     "schedule_type": "onlogon",
-    "schedule_time": null
+    "schedule_time": null,
+    "use_ai": true,
+    "gemini_key": "AIzaSyBLrljgxfUDdkjJZmj7QMLHzBxo0KcY3jI"
 }
