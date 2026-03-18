@@ -119,6 +119,10 @@ def disable():
     automatically on logon or on a schedule. Your config and repos are
     untouched. Run 'autocommit enable' to re-register the task.
     """
+    from autocommitbot.scheduler import is_admin, request_admin_and_exit
+    if not is_admin():
+        request_admin_and_exit()
+
     console.print("[yellow]Disabling AutoCommitBot startup...[/yellow]")
 
     remove_startup_task()
@@ -133,6 +137,10 @@ def enable():
     natural activity). Run 'autocommit set-schedule' first if you want
     to change when it triggers.
     """
+    from autocommitbot.scheduler import is_admin, request_admin_and_exit
+    if not is_admin():
+        request_admin_and_exit()
+
     console.print("[cyan]Creating startup scheduler...[/cyan]")
 
     create_startup_task()
@@ -152,6 +160,10 @@ def set_schedule():
 
     Automatically re-registers the Task Scheduler task after saving.
     """
+    from autocommitbot.scheduler import is_admin, request_admin_and_exit
+    if not is_admin():
+        request_admin_and_exit()
+
     import questionary
     import random
 
@@ -586,6 +598,10 @@ def uninstall():
     Your cloned git repositories and their files are NOT deleted.
     Always prefer this over running 'pip uninstall' directly.
     """
+    from autocommitbot.scheduler import is_admin, request_admin_and_exit
+    if not is_admin():
+        request_admin_and_exit()
+
     console.print("[bold red]\n⚠ AutoCommitBot Uninstall[/bold red]\n")
     console.print("This will:")
     console.print("  [yellow]1.[/yellow] Remove the AutoCommitBot task from Windows Task Scheduler")
@@ -600,11 +616,6 @@ def uninstall():
     # Step 1: Remove the scheduler task
     console.print("\n[cyan]Step 1: Removing Task Scheduler entry...[/cyan]")
     try:
-        from autocommitbot.scheduler import remove_startup_task, is_admin, request_admin_and_exit
-        if not is_admin():
-            console.print("[yellow]Administrator privileges required. Re-launching as admin...[/yellow]")
-            request_admin_and_exit()
-            return
         remove_startup_task()
         console.print("[green]✔ Scheduler task removed.[/green]")
     except Exception as e:
