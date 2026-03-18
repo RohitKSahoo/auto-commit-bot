@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.1.5)
+# 🚀 AutoCommitBot (v1.1.6)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -13,7 +13,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ## 🖥️ Preview
 
 <p align="center">
-  <img src="assets/CLI.png" alt="AutoCommitBot CLI" width="750"/>
+  <img src="assets/CLI_2.png" alt="AutoCommitBot CLI" width="750"/>
 </p>
 
 ---
