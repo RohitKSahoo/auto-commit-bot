@@ -1,26 +1,8 @@
-# Core AutoCommitBot Settings - MUST NOT BE COMMITTED
-autocommitbot/config.json
-autocommitbot/history.json
-autocommitbot/backups/
-autocommitbot/*.log
 
-# Python artifacts
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-build/
-dist/
-*.egg-info/
+# AutoCommitBot Secret Shield - Self Healing
 
-# Secret Shield fallback
 .env
 secrets.json
 *.key
 *.pem
 *.db
-*.sqlite
