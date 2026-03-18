@@ -1,66 +1,107 @@
-# 🚀 AutoCommitBot
+# 🚀 AutoCommitBot (v1.1.5)
 
-**Keep your GitHub profile active, safe, and professional—automatically.**
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
+[![GitHub activity](https://img.shields.io/badge/github-automated-orange.svg)](https://github.com/RohitKSahoo/auto-commit-bot)
 
-AutoCommitBot is a smart, AI-powered tool that manages your GitHub activity while you sleep. It uses Google's Gemini AI to analyze your code changes and write natural, human-like commit messages. Whether you're working on a big project or just want to maintain a consistent contribution graph, this bot handles the entire Git workflow for you.
+**Maintain a professional GitHub presence with AI-powered automation and built-in security.**
 
----
-
-## ✨ Key Features
-
-### 🤖 Smart AI Commits
-*   **AI Message Generation**: The bot analyzes your `git diff` and writes real commit messages (e.g., *"Added login validation logic"* instead of *"Update file.py"*).
-*   **Universal Compatibility**: Automatically works with every Gemini model version (2.5, 2.0, 1.5, or Pro) based on your API key.
-
-### 🛡️ "Secret Shield" Security
-*   **Auto-Healing Gitignore**: If you forget to hide a sensitive file (like `.env` or `config.json`), the bot automatically adds it to your `.gitignore` for you.
-*   **Proactive Un-tracking**: If a secret file was already accidentally pushed to GitHub in the past, the bot will detect it, un-track it, and remove it from GitHub’s view while keeping it safe on your local disk.
-*   **API Key Scanner**: Scans your code for exposed keys (Gemini, OpenAI, etc.) and warns you before you leak them.
-
-### 🕒 Natural Activity Scheduling
-*   **Human-Like Behavior**: Instead of committing every hour like a robot, "Natural Mode" skips random days and varies its timing to look like a real developer's schedule.
-*   **Logon Trigger**: Automatically starts when you turn on your computer and log in to Windows.
-
-### 🔄 Universal Undo (The Time Machine)
-*   **One-Click Restore**: If the bot ever commits something you don't like, simply use the `restore` command. It will roll back your local files **and** force-push the fix to GitHub automatically.
-*   **Automatic Backups**: Creates a ZIP snapshot of your folder before every single commit, so your work is never lost.
+AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers who want to maintain a consistent contribution history without the manual overhead. It monitors your local repositories, creates smart commit messages using Google's Gemini AI, and handles the entire push-pull-merge lifecycle seamlessly.
 
 ---
 
-## 🛠️ Commands Overview
+## 🌟 Why AutoCommitBot?
 
-| Command | What it does |
+*   **🤖 AI-Powered Commit Messages**: No more "Update file.py." The bot analyzes your code `diff` with Gemini AI to generate natural, descriptive commit messages.
+*   **🛡️ "Secret Shield" Security**: Built-in protection that automatically updates `.gitignore` and un-tracks sensitive files (like `.env`, `config.json`, or API keys) if they were accidentally staged.
+*   **🕒 Natural Activity Mode**: Mimics human behavior by skipping random days and varying commit times to avoid looking like a scripted bot.
+*   **🔄 Universal Undo**: A "Time Machine" feature that takes full ZIP backups before every commit. You can roll back both local files and GitHub state with a single command.
+*   **💻 Windows Native**: Integrated with Windows Task Scheduler to start automatically on logon.
+
+---
+
+## ✨ Features
+
+### Smart Commits
+- **Multi-Model Support**: Automatically detects and falls back between Gemini 2.0 Flash, 1.5 Flash, and Pro models.
+- **Robust Sync**: Automatically handles `git pull` and merge conflicts if remote changes are detected.
+
+### Security & Privacy
+- **Automatic `.gitignore` Healing**: Proactively adds sensitive patterns like `*.key`, `*.pem`, and `secrets.json`.
+- **Credential Scanner**: Warns you if an API key pattern is detected inside your code changes before pushing.
+
+### User Experience
+- **Interactive Setup**: A friendly wizard that guides you through API keys, scheduling, and repository selection.
+- **Visual Dashboard**: Beautiful terminal tables displaying your history, commit frequency, and bot status.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.8 or higher.
+- Git installed and configured globally.
+- (Recommended) A [Google Gemini API Key](https://aistudio.google.com/app/apikey).
+
+### Installation
+
+1. **Clone the project:**
+   ```bash
+   git clone https://github.com/RohitKSahoo/auto-commit-bot.git
+   cd auto-commit-bot
+   ```
+
+2. **Install the package:**
+   ```bash
+   pip install -e .
+   ```
+
+### First Time Setup
+
+Run the interactive wizard to configure your bot:
+```bash
+autocommit setup
+```
+Follow the prompts to add your repositories, choose your schedule, and paste your Gemini API key.
+
+---
+
+## 🛠️ Usage
+
+### Common Commands
+
+| Command | Description |
 | :--- | :--- |
-| `autocommit setup` | Run the friendly wizard to pick your repos and set your schedule. |
-| `autocommit add` | Instantly add the current folder you are working in to the bot. |
-| `autocommit run` | Force the bot to scan and commit everything right now. |
-| `autocommit status` | See a list of all repositories the bot is currently tracking. |
-| `autocommit dashboard` | View a beautiful table of your commit history and stats. |
-| `autocommit restore` | Pick a past backup and roll back both your local and GitHub repo. |
+| `autocommit setup` | Launch the configuration wizard. |
+| `autocommit add [path]` | Quickly add a new repository to tracking. |
+| `autocommit run` | Force an immediate scan and commit cycle. |
+| `autocommit dashboard` | View your commit history and bot statistics. |
+| `autocommit status` | List all repositories currently being managed. |
+| `autocommit restore` | Choose a past snapshot and roll back local/remote states. |
+| `autocommit enable/disable` | Manage the background logon task. |
+
+### Adding a Repository Quickly
+```bash
+# In the repository you want to add:
+autocommit add .
+```
 
 ---
 
-## ⚙️ Installation
+## 🆘 Support & Contributions
 
-### 1. **Prerequisites**
-*   **Python 3.10+** installed on your system.
-*   **Git** installed and authenticated (run `git push` once manually in any repo to make sure it works).
-*   **Gemini API Key** (Optional, but recommended for AI messages). Get it for free at [Google AI Studio](https://aistudio.google.com/app/apikey).
-
-### 2. **Download & Setup**
-1.  Clone this repository or download the source code.
-2.  Open your terminal inside the project folder.
-3.  Install the required packages:
-    ```bash
-    pip install -e .
-    ```
-4.  Run the setup wizard:
-    ```bash
-    autocommit setup
-    ```
-
-### 3. **Start Automating**
-Once setup is complete, the bot will handle the rest! You can relax knowing your contributions and security are being managed by **AutoCommitBot**.
+- **Issues**: If you find a bug or have a feature request, please [submit an issue](https://github.com/RohitKSahoo/auto-commit-bot/issues).
+- **Contribute**: Pull requests are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- **Documentation**: More detailed docs can be found in the [docs/](docs/) directory.
 
 ---
-*Developed with ❤️ by **@RohitKSahoo***
+
+## 👤 Maintainers
+
+Maintained by **[@RohitKSahoo](https://github.com/RohitKSahoo)**. Contributions are always welcome!
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
