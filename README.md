@@ -100,6 +100,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 * Status command for tracked repos
 * Add/remove repositories dynamically
 * Persistent history tracking (500 entries)
+* Clean uninstall command — removes scheduler task before uninstalling
 
 ---
 
@@ -167,6 +168,7 @@ pip install autocommitbot
 | `autocommit enable`     | Activates automation via scheduler (logon/time-based)                               | Turning on background automation               |
 | `autocommit disable`    | Stops automation and removes scheduled task                                         | Temporarily or permanently stopping the bot    |
 | `autocommit restore`    | Restores a previous backup and force-pushes to GitHub                               | Rolling back unwanted changes or commits       |
+| `autocommit uninstall`  | Removes the scheduler task and fully uninstalls the bot via pip                     | Cleanly removing AutoCommitBot from your system |
 
 ---
 
@@ -176,6 +178,7 @@ pip install autocommitbot
 * `restore` performs a **force push** (overwrites remote history)
 * `run` is for manual triggering, not regular use
 * Internet connection required for full functionality
+* Always use `autocommit uninstall` instead of `pip uninstall` directly — running pip uninstall alone will leave an orphaned task in Windows Task Scheduler that silently fails on every trigger
 
 ---
 
