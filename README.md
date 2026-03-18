@@ -33,10 +33,12 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ### Core Capabilities
 
 * **AI Commit Generation** — Context-aware commit messages using Gemini with model fallback
+* **AI Key Validation** — Real-time verification of your Gemini API key during setup
 * **Security Layer (Secret Shield)** — Automatic protection against sensitive file and credential exposure
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
 * **Repository Management** — GitHub repo discovery, selection, and automatic cloning
+* **Smart Re-Configuration** — `autocommit setup` doubles as an editor for any configuration section
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
 * **Execution Reliability** — Built-in retry logic, conflict handling, and network checks
 
@@ -79,6 +81,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ### 🤖 AI Commit System
 
 * Gemini AI integration for commit messages
+* **AI Key Validation** — Real-time verification of your API key during setup
 * Model fallback chain: 2.5 Flash → 2.0 Flash → 1.5 Flash → Pro
 * Diff truncation for large inputs (8000 chars)
 
@@ -167,9 +170,10 @@ All commands follow the pattern: `autocommit <command>`
 
 | Command | What it does |
 |---|---|
-| `autocommit setup` | First-time wizard: repos, schedule & AI |
-| `autocommit set-schedule` | Change when the bot runs |
+| `autocommit setup` | First-time wizard, **or** edit repos / schedule / AI |
 | `autocommit config-backup <days>` | Set how long backups are kept |
+
+> **Tip:** Running `autocommit setup` again on a configured machine shows a short menu so you can update just one section (Repositories, Schedule, or AI key) without repeating the full wizard.
 
 ### 📁 Repositories
 

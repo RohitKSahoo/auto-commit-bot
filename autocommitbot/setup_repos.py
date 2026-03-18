@@ -73,38 +73,93 @@ def run_setup():
         ('answer', 'fg:#00ff00 bold'),
     ])
 
-    step = 1
-    username = ""
-    repos = []
-    selected_repos = []
-    base_path = ""
-    schedule_choice = ""
-    schedule_type = "onlogon"
-    schedule_time = None
-    use_ai = False
-    gemini_key = ""
+    # ---------------------------------------------------------
+    # Initial Check: Partial vs Full Setup
+    # ---------------------------------------------------------
+    is_partial = os.path.exists(CONFIG_FILE)
+    current_config = {}
+    choice_map = {
+        "Update Repositories & Base Folder": 1,
+        "Update Automation Schedule": 4,
+        "Update AI Settings (Gemini API)": 5,
+        "Run Full Re-Setup": 1
+    }
+
+    if is_partial:
+        with open(CONFIG_FILE, "r") as f:
+            try:
+                current_config = json.load(f)
+            except:
+                current_config = {}
+        # Pre-fill state from existing config
+        schedule_type = current_config.get("schedule_type", "onlogon")
+        schedule_time = current_config.get("schedule_time")
+        use_ai = current_config.get("use_ai", False)
+        gemini_key = current_config.get("gemini_key", "")
+        step = 0  # Start at the mode-selection menu
+    else:
+        step = 1  # First run — go straight through the full wizard
 
     while True:
-        if step == 1:
-            ans = input("Enter your GitHub username (or 'q' to quit): ").strip()
-            if ans.lower() == 'q': return
-            if not ans: continue
+
+        # ── Step 0: Mode-selection menu (partial re-config only) ──────────────
+        if step == 0:
+            mode = questionary.select(
+                "AutoCommitBot is already configured. What would you like to do?",
+                choices=list(choice_map.keys()) + ["Exit"],
+                style=custom_style
+            ).ask()
+
+            if not mode or mode == "Exit":
+                return
+
+            is_partial = mode != "Run Full Re-Setup"
+            step = choice_map[mode]
+
+            # If full re-setup is chosen, reset is_partial flag
+            if not is_partial:
+                # Reset volatile state so full wizard starts clean
+                username = ""
+                repos = []
+                selected_repos = []
+                base_path = ""
+                schedule_type = "onlogon"
+                schedule_time = None
+                use_ai = False
+                gemini_key = ""
+            continue
+
+        # ── Step 1: GitHub username ───────────────────────────────────────────
+        elif step == 1:
+            back_hint = " (or 'b' to go back to menu)" if is_partial else " (or 'q' to quit)"
+            ans = input(f"Enter your GitHub username{back_hint}: ").strip()
+            if ans.lower() == 'q' and not is_partial:
+                return
+            if ans.lower() == 'b' and is_partial:
+                step = 0
+                continue
+            if not ans:
+                continue
             username = ans
 
             url = f"https://api.github.com/users/{username}/repos?per_page=100"
-            response = requests.get(url)
-
-            if response.status_code != 200:
-                print("Failed to fetch repositories from GitHub.")
+            try:
+                response = requests.get(url)
+                if response.status_code != 200:
+                    print("Failed to fetch repositories from GitHub.")
+                    continue
+                repos = response.json()
+            except:
+                print("Failed to reach GitHub API.")
                 continue
 
-            repos = response.json()
             if not repos:
                 print("No repositories found.")
                 continue
-            
+
             step = 2
 
+        # ── Step 2: Repo selection ────────────────────────────────────────────
         elif step == 2:
             console.print("\n[bold cyan]Navigation Instructions:[/bold cyan]")
             console.print("  [bold yellow]↑/↓[/bold yellow]     : Move cursor up and down")
@@ -132,49 +187,51 @@ def run_setup():
             selected_repos = ans
             step = 3
 
+        # ── Step 3: Base folder ───────────────────────────────────────────────
         elif step == 3:
             ans = input("\nEnter the base folder (example: D:\\Projects) or 'b' to go back: ").strip()
             if ans.lower() == 'b':
                 step = 2
                 continue
-            if not ans: continue
+            if not ans:
+                continue
             base_path = ans
-            step = 4
+            step = 6  # Jump to cloning
 
+        # ── Step 4: Schedule ──────────────────────────────────────────────────
         elif step == 4:
             console.print("\n[bold cyan]Schedule Selection:[/bold cyan]")
             console.print("  [bold yellow]↑/↓[/bold yellow]     : Move cursor up and down")
             console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your schedule option\n")
 
+            back_label = "← Back to menu" if is_partial else "<-- Go Back"
             ans = questionary.select(
                 "When do you want AutoCommitBot to run automatically?",
                 choices=[
-                    "<-- Go Back",
                     "When I log in to my system (ONLOGON)",
                     "At a specific time of day",
                     "At a random time (daily)",
-                    "On random days & times (Natural activity)"
+                    "On random days & times (Natural activity)",
+                    back_label,
                 ],
                 qmark="?",
                 instruction=" ",
                 style=custom_style
             ).ask()
 
-            if not ans or ans == "<-- Go Back":
-                step = 3
+            if not ans or ans == back_label:
+                step = 0 if is_partial else 3
                 continue
-            
+
             schedule_choice = ans
-            
+
             if schedule_choice == "At a specific time of day":
                 st = questionary.text(
-                    "Enter the time (24-hour format HH:MM, e.g. 14:30) or 'b' to go back:",
-                    validate=lambda x: x.lower() == 'b' or (len(x) == 5 and x[2] == ':' and x[:2].isdigit() and x[3:].isdigit() and int(x[:2]) < 24 and int(x[3:]) < 60)
+                    "Enter the time (24-hour format HH:MM, e.g. 14:30):",
+                    validate=lambda x: (len(x) == 5 and x[2] == ':' and x[:2].isdigit() and x[3:].isdigit() and int(x[:2]) < 24 and int(x[3:]) < 60)
                 ).ask()
-                
-                if st.lower() == 'b':
+                if not st:
                     continue
-                
                 schedule_time = st
                 schedule_type = "time"
             elif schedule_choice == "At a random time (daily)":
@@ -186,12 +243,11 @@ def run_setup():
             elif schedule_choice == "On random days & times (Natural activity)":
                 schedule_type = "random_day_time"
                 schedule_time = None
-                print(f"Natural Activity mode selected! The bot will skip days dynamically.")
             else:
                 schedule_type = "onlogon"
                 schedule_time = None
 
-            # --- Confirmation step ---
+            # Confirmation
             summary = schedule_choice
             if schedule_type == "time" and schedule_time:
                 summary = f"{schedule_choice} → {schedule_time}"
@@ -206,67 +262,134 @@ def run_setup():
             ).ask()
 
             if not confirm or "Go back" in confirm:
-                continue  # Restart step 4 from the top
+                continue
+
+            if is_partial:
+                current_config["schedule_type"] = schedule_type
+                current_config["schedule_time"] = schedule_time
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(current_config, f, indent=4)
+                print("\nSchedule updated. Re-applying startup task...")
+                create_startup_task()
+                print("Done!")
+                break
 
             step = 5
 
+        # ── Step 5: AI / Gemini key ───────────────────────────────────────────
         elif step == 5:
-            ans = questionary.confirm(
-                "Enable AI-generated commit messages? (Requires a free Gemini API key)",
-                default=False,
-                style=custom_style
-            ).ask()
+            if is_partial:
+                # In partial mode, offer a back option before the yes/no confirm
+                back_choice = questionary.select(
+                    "Update AI commit message settings?",
+                    choices=["Yes — update AI settings", "← Back to menu"],
+                    style=custom_style
+                ).ask()
+                if not back_choice or back_choice == "← Back to menu":
+                    step = 0
+                    continue
+                ans = True
+            else:
+                ans = questionary.confirm(
+                    "Enable AI-generated commit messages? (Requires a free Gemini API key)",
+                    default=use_ai,
+                    style=custom_style
+                ).ask()
 
             if ans:
-                key_ans = input("Enter your Gemini API key (or 'b' to go back): ").strip()
-                if key_ans.lower() == 'b':
-                    step = 4
-                    continue
-                gemini_key = key_ans
-                use_ai = True
+                while True:
+                    key_ans = input("\nEnter your Gemini API key (or 's' to skip/disable AI): ").strip()
+
+                    if key_ans.lower() == 's':
+                        gemini_key = ""
+                        use_ai = False
+                        break
+
+                    if not key_ans:
+                        continue
+
+                    console.print("Validating API key...")
+                    try:
+                        test_url = f"https://generativelanguage.googleapis.com/v1/models?key={key_ans}"
+                        test_response = requests.get(test_url, timeout=10)
+
+                        if test_response.status_code == 200:
+                            console.print("[green]✔ API key is functional![/green]")
+                            gemini_key = key_ans
+                            use_ai = True
+                            break
+                        else:
+                            error_data = test_response.json()
+                            error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                            console.print(f"[red]✘ API key validation failed: {error_msg}[/red]")
+
+                            retry = questionary.select(
+                                "What would you like to do?",
+                                choices=["Try another key", "Skip and use generic messages"],
+                                style=custom_style
+                            ).ask()
+
+                            if retry == "Skip and use generic messages":
+                                gemini_key = ""
+                                use_ai = False
+                                break
+                    except Exception as e:
+                        console.print(f"[red]✘ Could not reach Gemini API: {e}[/red]")
+                        retry = questionary.select(
+                            "What would you like to do?",
+                            choices=["Try again", "Skip and use generic messages"],
+                            style=custom_style
+                        ).ask()
+                        if retry == "Skip and use generic messages":
+                            gemini_key = ""
+                            use_ai = False
+                            break
             else:
                 gemini_key = ""
                 use_ai = False
-                
-            if ans is None:
-                step = 4
-                continue
+
+            if is_partial:
+                current_config["use_ai"] = use_ai
+                current_config["gemini_key"] = gemini_key
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(current_config, f, indent=4)
+                print("\nAI Settings updated successfully!")
+                break
 
             step = 6
 
+        # ── Step 6: Clone repos & finalize ────────────────────────────────────
         elif step == 6:
             if not os.path.exists(base_path):
-                print("Folder does not exist. Creating it...")
-                os.makedirs(base_path)
+                os.makedirs(base_path, exist_ok=True)
 
             repo_paths = []
-
             for repo in selected_repos:
                 repo_path = os.path.join(base_path, repo)
-                if os.path.exists(repo_path):
-                    print(f"\nRepository already exists locally: {repo_path}")
-                else:
+                if not os.path.exists(repo_path):
                     print(f"\nCloning repository: {repo}")
                     clone_url = f"https://github.com/{username}/{repo}.git"
                     subprocess.run(["git", "clone", clone_url, repo_path])
-
                 repo_paths.append(repo_path)
 
-            print("\nChecking GitHub authentication...\n")
+            print("\nVerification...")
             auth_ok = True
             for path in repo_paths:
                 if not check_git_auth(path):
+                    print(f"Auth warning for: {path}")
                     auth_ok = False
-                    break
 
             if not auth_ok:
-                print("Git authentication not detected.\n")
-                print("Please authenticate once using Git.")
-                print("Example: cd into any repository and run 'git push'.\n")
-                return
+                print("Warning: GitHub authentication check failed. You may need to 'git push' manually once.\n")
 
-            print("Git authentication verified.\n")
+            if is_partial:
+                current_config["repositories"] = repo_paths
+                with open(CONFIG_FILE, "w") as f:
+                    json.dump(current_config, f, indent=4)
+                print("\nRepositories updated successfully!")
+                break
 
+            # Full setup — save everything
             config = {
                 "repositories": repo_paths,
                 "schedule_type": schedule_type,
@@ -274,15 +397,9 @@ def run_setup():
                 "use_ai": use_ai,
                 "gemini_key": gemini_key
             }
-
             with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f, indent=4)
 
-            print("Setup complete.\n")
-            print("Repositories configured for automation:\n")
-            for path in repo_paths:
-                print("-", path)
-
-            print("\nCreating startup scheduler...")
+            print("\nSetup complete! Creating startup scheduler...")
             create_startup_task()
             break
