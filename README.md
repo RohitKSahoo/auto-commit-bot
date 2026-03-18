@@ -159,17 +159,20 @@ pip install autocommitbot
 
 ## 🛠️ Usage
 
-| Command                 | What it does                                                                        | When to use                                    |
-| ----------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `autocommit setup`      | Launches interactive wizard to connect GitHub, select repos, and configure schedule | First-time setup or reconfiguration            |
-| `autocommit add [path]` | Adds a local Git repository to tracking (defaults to current folder)                | When starting a new project you want automated |
-| `autocommit run`        | Manually scans repos, commits changes, and pushes to GitHub                         | Testing or forcing an immediate commit         |
-| `autocommit dashboard`  | Displays last 50 commits with stats (user vs activity)                              | Monitoring activity and verifying behavior     |
-| `autocommit status`     | Lists all tracked repositories and their state                                      | Checking what the bot is managing              |
-| `autocommit enable`     | Activates automation via scheduler (logon/time-based)                               | Turning on background automation               |
-| `autocommit disable`    | Stops automation and removes scheduled task                                         | Temporarily or permanently stopping the bot    |
-| `autocommit restore`    | Restores a previous backup and force-pushes to GitHub                               | Rolling back unwanted changes or commits       |
-| `autocommit uninstall`  | Removes the scheduler task and fully uninstalls the bot via pip                     | Cleanly removing AutoCommitBot from your system |
+| Command                    | What it does                                                                        | When to use                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `autocommit setup`         | Launches interactive wizard to connect GitHub, select repos, and configure schedule | First-time setup or reconfiguration                 |
+| `autocommit add [path]`    | Adds a local Git repository to tracking (defaults to current folder)                | When starting a new project you want automated      |
+| `autocommit run`           | Manually scans repos, commits changes, and pushes to GitHub                         | Testing or forcing an immediate commit              |
+| `autocommit dashboard`     | Displays last 50 commits with stats (user vs activity)                              | Monitoring activity and verifying behavior          |
+| `autocommit status`        | Lists all tracked repositories and their state                                      | Checking what the bot is managing                   |
+| `autocommit enable`        | Activates automation via scheduler (logon/time-based)                               | Turning on background automation                    |
+| `autocommit disable`       | Stops automation and removes scheduled task                                         | Temporarily or permanently stopping the bot         |
+| `autocommit set-schedule`  | Change your automation schedule without re-running full setup                       | Switching between logon / time / natural mode       |
+| `autocommit restore`       | Restores a previous backup and force-pushes to GitHub                               | Rolling back unwanted changes or commits            |
+| `autocommit config-backup` | Configure how many days backup snapshots are kept                                   | Adjusting backup retention policy                   |
+| `autocommit version`       | Shows installed version and checks PyPI for available updates                       | Checking if you're up to date                       |
+| `autocommit uninstall`     | Removes the scheduler task and fully uninstalls the bot via pip                     | Cleanly removing AutoCommitBot from your system     |
 
 ---
 
