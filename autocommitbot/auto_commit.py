@@ -179,38 +179,52 @@ SENSITIVE_FILES = [
 SENSITIVE_PATTERNS = [r"AIzaSy[A-Za-z0-9_-]{33}", r"sk-[A-Za-z0-9]{48}"]
 
 def shield_sensitive_data(repo_path):
-    """Safety check to prevent pushing secrets and automatically secure them"""
+    """Safety check to prevent pushing secrets and forcefully un-track them if exposed"""
     # 1. Update .gitignore
     gitignore = os.path.join(repo_path, ".gitignore")
     existing_content = ""
     if os.path.exists(gitignore):
         with open(gitignore, "r") as f: existing_content = f.read()
     
-    # Check for sensitive files that exist on disk but aren't ignored
-    to_ignore = []
-    for pattern in SENSITIVE_FILES:
-        # Check if the file pattern is already in gitignore
-        if pattern not in existing_content:
-            # Check if such files actually exist to avoid cluttering .gitignore
-            # (Simplistic check for stars/wildcards)
-            to_ignore.append(pattern)
-
+    to_ignore = [f for f in SENSITIVE_FILES if f not in existing_content]
     if to_ignore:
-        print(f"[SHIELD] 🛡️  SECURED: Found potential leaks. Protecting: {', '.join(to_ignore)}")
+        print(f"[SHIELD] 🛡️  SECURED: Protecting new sensitive patterns: {', '.join(to_ignore)}")
         with open(gitignore, "a") as f:
             if not existing_content: f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
             for item in to_ignore: f.write(f"\n{item}")
+
+    # 2. PROACTIVE UN-TRACKING: Check if any sensitive file is currently being tracked by Git
+    # This fixes the issue where a file is in .gitignore but still exists in the repo
+    try:
+        # Get list of all tracked files
+        tracked_process = subprocess.run(
+            ["git", "ls-files"], 
+            cwd=repo_path, 
+            capture_output=True, 
+            text=True,
+            encoding='utf-8',
+            errors='ignore'
+        )
+        tracked_files = tracked_process.stdout.splitlines()
         
-        # 2. Forcefully remove them from git cache (in case they were staged or tracked)
-        for item in to_ignore:
-            # Clean up both the file pattern and common variations
-            subprocess.run(["git", "rm", "-r", "--cached", item], cwd=repo_path, capture_output=True)
+        needs_untracking = False
+        for s_file in SENSITIVE_FILES:
+            # Check if this sensitive pattern matches any tracked file
+            # (Matches exact filename or wildcards like *.key)
+            cleaned_pattern = s_file.replace("*.", "")
+            for t_file in tracked_files:
+                if t_file == s_file or t_file.endswith(cleaned_pattern) or os.path.basename(t_file) == s_file:
+                    print(f"[SHIELD] ⚠️  URGENT: '{t_file}' is exposed on GitHub! Un-tracking now...")
+                    subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True)
+                    needs_untracking = True
         
-        # Stage the new .gitignore immediately
-        subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
-        
-        print(f"[SHIELD] ✅ Your secrets are now stored securely in '.gitignore'.")
-        print(f"[SHIELD] They will remain on your local disk but will never be pushed to GitHub.")
+        if needs_untracking:
+            subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
+            print(f"[SHIELD] ✅ Exposed files have been removed from Git tracking.")
+            print(f"[SHIELD] They will disappear from GitHub on your next push.")
+
+    except Exception as e:
+        print(f"[SHIELD ERROR] Audit failed: {e}")
 
     # 3. Key Scanning (Purely informative if found in tracked files)
     try:
