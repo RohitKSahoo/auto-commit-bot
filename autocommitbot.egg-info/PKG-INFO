@@ -1,4 +1,18 @@
-# 🚀 AutoCommitBot (v1.2.1)
+Metadata-Version: 2.4
+Name: autocommitbot
+Version: 1.2.1
+Summary: Automatic GitHub commit bot that logs developer activity.
+Author: Rohit
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: typer
+Requires-Dist: rich
+Requires-Dist: requests
+Requires-Dist: gitpython
+Requires-Dist: questionary
+Requires-Dist: pyfiglet
+
+# 🚀 AutoCommitBot (v1.1.6)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -13,7 +27,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 ## 🖥️ Preview
 
 <p align="center">
-  <img src="assets/CLI.png" alt="AutoCommitBot CLI" width="750"/>
+  <img src="assets/CLI_2.png" alt="AutoCommitBot CLI" width="750"/>
 </p>
 
 ---

@@ -1,0 +1,2 @@
+[console_scripts]
+autocommit = autocommitbot.cli:app
