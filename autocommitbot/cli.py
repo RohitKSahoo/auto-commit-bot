@@ -36,56 +36,89 @@ def main(ctx: typer.Context):
         console.print("                                              [bold yellow]Developed by @RohitKSahoo[/bold yellow]\n")
         console.print("[bold green]✔ Installation complete![/bold green]\n")
         
-        console.print("[dim]==== Command Overview ====[/dim]\n")
-        
-        table = Table(show_header=True, header_style="bold magenta", border_style="dim")
-        table.add_column("Command", style="cyan", width=25)
-        table.add_column("Description", style="white")
-        
-        table.add_row("autocommit setup", "Run the initial wizard to select tracked repositories")
-        table.add_row("autocommit run", "Immediately scan folders and commit changes right now (also 'start')")
-        table.add_row("autocommit enable", "Enable automatic background commits on Windows Logon")
-        table.add_row("autocommit disable", "Disable the scheduled background task completely")
-        table.add_row("autocommit set-schedule", "Change your automation schedule without re-running full setup")
-        table.add_row("autocommit status", "Show the list of currently tracked repositories")
-        table.add_row("autocommit add [path]", "Add a local folder to automation (default: current folder)")
-        table.add_row("autocommit remove", "Remove a repository from the automation list")
-        table.add_row("autocommit dashboard", "View history of all automated commits and system stats")
-        table.add_row("autocommit restore", "Undo a bot commit by restoring the physical file backups")
-        table.add_row("autocommit config-backup", "Configure how many days backup snapshots are kept")
-        table.add_row("autocommit version", "Show installed version and check for available updates")
-        table.add_row("autocommit uninstall", "Remove the scheduler task and fully uninstall the bot")
-        
+        console.print("[dim]  All commands follow:[/dim]  [bold cyan]autocommit [cyan]<command>[/cyan]\n")
+
+        table = Table(
+            show_header=True,
+            header_style="bold magenta",
+            border_style="dim",
+            show_lines=False,
+            padding=(0, 2),
+            expand=False
+        )
+        table.add_column("Command", style="bold cyan", no_wrap=True, min_width=18)
+        table.add_column("What it does", style="white", min_width=40)
+
+        # Setup & Config
+        table.add_row("[dim]  \u2500\u2500\u2500 Setup & Config[/dim]", "")
+        table.add_row("  setup",          "First-time wizard: repos, schedule & AI")
+        table.add_row("  set-schedule",   "Change when the bot runs")
+        table.add_row("  config-backup",  "Set how long backups are kept", end_section=True)
+
+        # Repositories
+        table.add_row("[dim]  \u2500\u2500\u2500 Repositories[/dim]", "")
+        table.add_row("  add [path]",     "Track a new local git repo")
+        table.add_row("  remove",         "Stop tracking a repo")
+        table.add_row("  status",         "List all tracked repos", end_section=True)
+
+        # Automation
+        table.add_row("[dim]  \u2500\u2500\u2500 Automation[/dim]", "")
+        table.add_row("  run",            "Commit & push all changes now")
+        table.add_row("  enable",         "Register the Windows auto-start task")
+        table.add_row("  disable",        "Remove the Windows auto-start task", end_section=True)
+
+        # History & System
+        table.add_row("[dim]  \u2500\u2500\u2500 History & System[/dim]", "")
+        table.add_row("  dashboard",      "View commit history & stats")
+        table.add_row("  restore",        "Roll back a bot commit from snapshot")
+        table.add_row("  version",        "Check installed version & updates")
+        table.add_row("  uninstall",      "Remove scheduler task then pip uninstall")
+
         console.print(table)
-        
+
         # Footer
-        console.print("\n[dim]Run 'autocommit <command> --help' for details on a specific command.[/dim]\n")
+        console.print("\n[dim]  Run [/dim][cyan]autocommit <command> --help[/cyan][dim] for full details on any command.[/dim]\n")
 
 
 @app.command()
 def setup():
-    """Run repository setup"""
+    """Run the interactive setup wizard.
+
+    Connects to GitHub, fetches your repos, lets you pick which ones to
+    track, configure a schedule, and optionally set up AI commit messages.
+    Run this once after installing, or again any time you want to reconfigure.
+    """
     console.print("[cyan]Running setup...[/cyan]")
     run_setup()
 
 
 @app.command()
 def run():
-    """Run auto commit bot immediately"""
+    """Scan all tracked repos and commit any pending changes immediately.
+
+    Stages, commits, and pushes changes in all tracked repositories right now.
+    Skips the schedule — useful for testing or forcing an immediate commit.
+    Also available as: autocommit start
+    """
     console.print("[green]Starting auto commit bot...[/green]")
     run_bot(force_run=True)
 
 
 @app.command()
 def start():
-    """Run bot manually"""
+    """Alias for 'run' — commit & push all tracked repos immediately."""
     console.print("[green]Running bot manually...[/green]")
     run_bot(force_run=True)
 
 
 @app.command()
 def disable():
-    """Disable Windows startup"""
+    """Remove the AutoCommitBot task from Windows Task Scheduler.
+
+    Stops all automated background commits. The bot will no longer run
+    automatically on logon or on a schedule. Your config and repos are
+    untouched. Run 'autocommit enable' to re-register the task.
+    """
     console.print("[yellow]Disabling AutoCommitBot startup...[/yellow]")
 
     remove_startup_task()
@@ -94,7 +127,12 @@ def disable():
 
 @app.command()
 def enable():
-    """Enable Windows startup scheduler"""
+    """Register the AutoCommitBot task in Windows Task Scheduler.
+
+    Uses the schedule type saved in your config (logon / daily time /
+    natural activity). Run 'autocommit set-schedule' first if you want
+    to change when it triggers.
+    """
     console.print("[cyan]Creating startup scheduler...[/cyan]")
 
     create_startup_task()
@@ -104,7 +142,16 @@ def enable():
 
 @app.command(name="set-schedule")
 def set_schedule():
-    """Change the automation schedule without running full setup"""
+    """Change your automation schedule without re-running full setup.
+
+    Shows your current schedule, then lets you pick a new one:
+      - On Logon
+      - Daily at a specific time
+      - Daily at a random time
+      - Natural Activity mode (random days & times)
+
+    Automatically re-registers the Task Scheduler task after saving.
+    """
     import questionary
     import random
 
@@ -221,7 +268,11 @@ def set_schedule():
 
 @app.command()
 def remove():
-    """Remove a repository from the configuration"""
+    """Stop tracking a repository — removes it from automation.
+
+    Presents a numbered list of tracked repos and lets you pick one to remove.
+    Does NOT delete the repo's files from disk.
+    """
     config_path = os.path.join(BASE_DIR, "config.json")
 
     if not os.path.exists(config_path):
@@ -273,7 +324,12 @@ def remove():
 
 @app.command()
 def add(path: str = typer.Argument(None, help="Path to the repository (defaults to current folder)")):
-    """Add a local repository to the configuration"""
+    """Start tracking a local git repository.
+
+    Validates that the folder exists and contains a .git directory, then
+    adds it to the automation list. Defaults to the current working directory
+    if no path is given. Also checks that git push authentication works.
+    """
     if path is None:
         target_path = os.getcwd()
     else:
@@ -329,7 +385,7 @@ def add(path: str = typer.Argument(None, help="Path to the repository (defaults 
 
 @app.command()
 def status():
-    """Show configured repositories"""
+    """Show all repositories currently being tracked by the bot."""
 
     config_path = os.path.join(BASE_DIR, "config.json")
 
@@ -358,7 +414,12 @@ def status():
 
 @app.command()
 def dashboard():
-    """Show commit history dashboard"""
+    """Display a rich table of the last 50 automated commits.
+
+    Shows timestamp, repository name, commit type (User Changes vs Random
+    Activity), and the commit message. Also prints a summary of total
+    commits broken down by type.
+    """
     history_path = os.path.join(BASE_DIR, "history.json")
     
     if not os.path.exists(history_path):
@@ -406,7 +467,12 @@ def dashboard():
 
 @app.command()
 def config_backup(days: int = typer.Argument(..., help="Number of days to keep backup snapshots")):
-    """Configure snapshot backup expiration (days)"""
+    """Set how long pre-commit backup snapshots are kept before auto-deletion.
+
+    Example: autocommit config-backup 14
+    This keeps all snapshots for 14 days, after which they are deleted
+    automatically the next time the bot runs.
+    """
     config_path = os.path.join(BASE_DIR, "config.json")
     try:
         with open(config_path, "r") as f:
@@ -424,7 +490,14 @@ def config_backup(days: int = typer.Argument(..., help="Number of days to keep b
 
 @app.command()
 def restore():
-    """Restore repository files from a background sync backup snapshot"""
+    """Roll back a bot commit by restoring a pre-commit file snapshot.
+
+    Lists available backup snapshots (ZIP files saved before each commit).
+    After you pick one, files are restored locally AND a force-push rolls
+    back the remote GitHub repo to that state too.
+    
+    Note: uses 'git push --force' which rewrites remote history.
+    """
     history_path = os.path.join(BASE_DIR, "history.json")
     
     if not os.path.exists(history_path):
@@ -503,7 +576,16 @@ def restore():
 
 @app.command()
 def uninstall():
-    """Remove the scheduler task and fully uninstall AutoCommitBot"""
+    """Cleanly remove AutoCommitBot — scheduler task + pip package.
+
+    Step 1: Deletes the 'AutoCommitBot' task from Windows Task Scheduler
+    so it stops running automatically (requires Admin privileges).
+
+    Step 2: Runs 'pip uninstall autocommitbot -y' to remove the package.
+
+    Your cloned git repositories and their files are NOT deleted.
+    Always prefer this over running 'pip uninstall' directly.
+    """
     console.print("[bold red]\n⚠ AutoCommitBot Uninstall[/bold red]\n")
     console.print("This will:")
     console.print("  [yellow]1.[/yellow] Remove the AutoCommitBot task from Windows Task Scheduler")
@@ -545,7 +627,13 @@ def uninstall():
 
 @app.command()
 def version():
-    """Show installed version and check for updates"""
+    """Show the installed version and check PyPI for available updates.
+
+    Compares your installed version against the latest release on PyPI.
+    If a newer version is available, prints the pip upgrade command.
+
+    Requires an internet connection to check for updates.
+    """
     try:
         installed = get_version("autocommitbot")
     except PackageNotFoundError:
