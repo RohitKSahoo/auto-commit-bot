@@ -191,6 +191,23 @@ def run_setup():
                 schedule_type = "onlogon"
                 schedule_time = None
 
+            # --- Confirmation step ---
+            summary = schedule_choice
+            if schedule_type == "time" and schedule_time:
+                summary = f"{schedule_choice} → {schedule_time}"
+            console.print(f"\n[dim]Selected schedule:[/dim] [bold green]{summary}[/bold green]")
+
+            confirm = questionary.select(
+                "Confirm this schedule?",
+                choices=["✔ Yes, confirm", "✘ Go back and choose again"],
+                qmark="?",
+                instruction=" ",
+                style=custom_style
+            ).ask()
+
+            if not confirm or "Go back" in confirm:
+                continue  # Restart step 4 from the top
+
             step = 5
 
         elif step == 5:

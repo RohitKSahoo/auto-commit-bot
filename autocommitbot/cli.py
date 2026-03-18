@@ -100,6 +100,123 @@ def enable():
     console.print("[green]Startup task created.[/green]")
 
 
+@app.command(name="set-schedule")
+def set_schedule():
+    """Change the automation schedule without running full setup"""
+    import questionary
+    import random
+
+    config_path = os.path.join(BASE_DIR, "config.json")
+
+    if not os.path.exists(config_path):
+        console.print("[red]No configuration found. Run 'autocommit setup' first.[/red]")
+        return
+
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    # Show current schedule
+    current_type = config.get("schedule_type", "onlogon")
+    current_time = config.get("schedule_time", None)
+    current_label = {
+        "onlogon": "On Logon",
+        "time": f"Daily at {current_time}",
+        "random_day_time": "Natural Activity (random days & times)"
+    }.get(current_type, current_type)
+    console.print(f"\n[dim]Current schedule:[/dim] [bold yellow]{current_label}[/bold yellow]\n")
+
+    custom_style = questionary.Style([
+        ('qmark',       'fg:#00ffff bold'),
+        ('question',    'bold'),
+        ('selected',    'fg:#00ff00 bold'),
+        ('pointer',     'fg:#00ffff bold'),
+        ('highlighted', 'fg:#00ffff bold'),
+        ('answer',      'fg:#00ff00 bold'),
+    ])
+
+    while True:
+        console.print("[bold cyan]Schedule Selection:[/bold cyan]")
+        console.print("  [bold yellow]↑/↓[/bold yellow]     : Move cursor up and down")
+        console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your selection\n")
+
+        choice = questionary.select(
+            "Select a new schedule:",
+            choices=[
+                "When I log in to my system (ONLOGON)",
+                "At a specific time of day",
+                "At a random time (daily)",
+                "On random days & times (Natural activity)",
+                "Cancel — keep current schedule"
+            ],
+            qmark="?",
+            instruction=" ",
+            style=custom_style
+        ).ask()
+
+        if not choice or choice.startswith("Cancel"):
+            console.print("[yellow]No changes made.[/yellow]")
+            return
+
+        # Determine schedule_type and schedule_time
+        if choice == "At a specific time of day":
+            st = questionary.text(
+                "Enter the time (24-hour format HH:MM, e.g. 14:30):",
+                validate=lambda x: (
+                    len(x) == 5 and x[2] == ':' and
+                    x[:2].isdigit() and x[3:].isdigit() and
+                    int(x[:2]) < 24 and int(x[3:]) < 60
+                )
+            ).ask()
+            if not st:
+                console.print("[yellow]No changes made.[/yellow]")
+                return
+            schedule_type = "time"
+            schedule_time = st
+        elif choice == "At a random time (daily)":
+            hh = random.randint(9, 23)
+            mm = random.randint(0, 59)
+            schedule_time = f"{hh:02d}:{mm:02d}"
+            schedule_type = "time"
+            console.print(f"[dim]Randomly picked [bold]{schedule_time}[/bold] as your daily commit time.[/dim]")
+        elif choice == "On random days & times (Natural activity)":
+            schedule_type = "random_day_time"
+            schedule_time = None
+        else:
+            schedule_type = "onlogon"
+            schedule_time = None
+
+        # Confirmation
+        summary = choice
+        if schedule_type == "time" and schedule_time:
+            summary = f"{choice} → {schedule_time}"
+        console.print(f"\n[dim]New schedule:[/dim] [bold green]{summary}[/bold green]")
+
+        confirm = questionary.select(
+            "Confirm this schedule?",
+            choices=["✔ Yes, apply it", "✘ Go back and choose again"],
+            qmark="?",
+            instruction=" ",
+            style=custom_style
+        ).ask()
+
+        if not confirm or "Go back" in confirm:
+            continue
+
+        # Save to config
+        config["schedule_type"] = schedule_type
+        config["schedule_time"] = schedule_time
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=4)
+
+        console.print("\n[green]✔ Schedule updated in config.[/green]")
+
+        # Re-register the Task Scheduler task with new settings
+        console.print("[cyan]Re-applying Task Scheduler task...[/cyan]")
+        create_startup_task()
+        console.print("[bold green]✔ Done! Your new schedule is active.[/bold green]\n")
+        return
+
+
 @app.command()
 def remove():
     """Remove a repository from the configuration"""
