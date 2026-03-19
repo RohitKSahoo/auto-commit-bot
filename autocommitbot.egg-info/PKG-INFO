@@ -104,6 +104,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 * Configurable backup retention (`config-backup`)
 * Restore command with snapshot selection
 * Automatic GitHub rollback via force push
+* Clear all backups on demand (`clear-backups`)
 
 ---
 
@@ -208,6 +209,7 @@ All commands follow the pattern: `autocommit <command>`
 |---|---|
 | `autocommit dashboard` | View commit history & stats |
 | `autocommit restore` | Roll back a bot commit from snapshot |
+| `autocommit clear-backups` | Delete all backup snapshots to free disk space |
 | `autocommit version` | Check installed version & updates |
 | `autocommit uninstall` | Remove scheduler task then pip uninstall |
 

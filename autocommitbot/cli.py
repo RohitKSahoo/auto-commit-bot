@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import zipfile
+import shutil
 import subprocess
 import requests
 from importlib.metadata import version as get_version, PackageNotFoundError
@@ -73,6 +74,7 @@ def main(ctx: typer.Context):
         table.add_row("[dim]  \u2500\u2500\u2500 History & System[/dim]", "")
         table.add_row("  dashboard",      "View commit history & stats")
         table.add_row("  restore",        "Roll back a bot commit from snapshot")
+        table.add_row("  clear-backups",  "Delete all backup snapshots to free disk space")
         table.add_row("  version",        "Check installed version & updates")
         table.add_row("  uninstall",      "Remove scheduler task then pip uninstall")
 
@@ -461,6 +463,86 @@ def restore():
 
     except ValueError:
         console.print("[red]Invalid input.[/red]")
+
+
+@app.command()
+def clear_backups():
+    """Delete all backup snapshots to free disk space.
+
+    Removes every ZIP snapshot stored in the backups folder and clears the
+    corresponding snapshot references from commit history. Commit history
+    entries themselves are preserved — only their snapshot links are removed.
+
+    Useful when backup files are consuming too much disk space.
+    """
+    backup_dir = os.path.join(BASE_DIR, "backups")
+
+    if not os.path.isdir(backup_dir):
+        console.print("[yellow]No backups directory found. Nothing to clear.[/yellow]")
+        return
+
+    zip_files = [f for f in os.listdir(backup_dir) if f.endswith(".zip")]
+
+    if not zip_files:
+        console.print("[yellow]Backups folder is already empty.[/yellow]")
+        return
+
+    # Calculate total size
+    total_bytes = sum(
+        os.path.getsize(os.path.join(backup_dir, f)) for f in zip_files
+    )
+
+    def _fmt_size(b: int) -> str:
+        for unit in ("B", "KB", "MB", "GB"):
+            if b < 1024:
+                return f"{b:.1f} {unit}"
+            b /= 1024
+        return f"{b:.1f} TB"
+
+    console.print(f"\n[bold cyan]Backup Cleanup[/bold cyan]")
+    console.print(f"  Snapshots found : [yellow]{len(zip_files)}[/yellow]")
+    console.print(f"  Total size      : [yellow]{_fmt_size(total_bytes)}[/yellow]\n")
+
+    import builtins
+    confirm = builtins.input("Delete all backup snapshots? (yes/N): ").strip().lower()
+    if confirm != "yes":
+        console.print("[yellow]Operation cancelled.[/yellow]")
+        return
+
+    # Delete every ZIP file
+    deleted = 0
+    for f in zip_files:
+        try:
+            os.remove(os.path.join(backup_dir, f))
+            deleted += 1
+        except Exception as e:
+            console.print(f"[red]Failed to delete {f}: {e}[/red]")
+
+    # Clean snapshot references from history.json
+    history_path = os.path.join(BASE_DIR, "history.json")
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, "r") as f:
+                history = json.load(f)
+
+            changed = False
+            for entry in history:
+                if "snapshot" in entry:
+                    del entry["snapshot"]
+                    changed = True
+                if "expiry" in entry:
+                    del entry["expiry"]
+                    changed = True
+
+            if changed:
+                with open(history_path, "w") as f:
+                    json.dump(history, f, indent=4)
+        except Exception:
+            pass
+
+    console.print(f"\n[bold green]✔ Cleared {deleted}/{len(zip_files)} backup snapshots ({_fmt_size(total_bytes)} freed).[/bold green]")
+    console.print("[dim]Commit history entries are preserved — only snapshot files were removed.[/dim]\n")
+
 
 
 @app.command()
