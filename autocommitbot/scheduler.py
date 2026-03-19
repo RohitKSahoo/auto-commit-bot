@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import ctypes
@@ -10,7 +11,7 @@ def is_admin():
     """Check if the script is running with administrative privileges."""
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()  # type: ignore
-    except:
+    except Exception:
         return False
 
 
@@ -36,7 +37,6 @@ def request_admin_and_exit():
     sys.exit(0)
 
 
-import json
 
 def get_schedule_settings():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -46,7 +46,7 @@ def get_schedule_settings():
             with open(config_path, "r") as f:
                 c = json.load(f)
                 return c.get("schedule_type", "onlogon"), c.get("schedule_time", None)
-    except:
+    except Exception:
         pass
     return "onlogon", None
 
@@ -124,5 +124,5 @@ def remove_startup_task():
     try:
         subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
         print("Startup task removed successfully from Task Scheduler.")
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         print("Failed to remove scheduled task. It might not exist.")

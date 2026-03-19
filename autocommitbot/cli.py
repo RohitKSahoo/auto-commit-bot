@@ -5,7 +5,6 @@ import json
 import os
 import sys
 import zipfile
-import datetime
 import subprocess
 import requests
 from importlib.metadata import version as get_version, PackageNotFoundError
@@ -208,7 +207,7 @@ def remove():
         except ValueError:
             console.print("[red]Invalid input. Please enter a number.[/red]")
 
-    except Exception as e:
+    except Exception:
         console.print("[red]Failed to update configuration file.[/red]")
 
 
@@ -544,7 +543,7 @@ def version():
                 console.print(f"[green]✔ You are on the latest version ({installed}).[/green]\n")
             else:
                 console.print(f"[yellow]⚡ New version available: [bold]{latest}[/bold] (you have {installed})[/yellow]")
-                console.print(f"[dim]Run to update:[/dim] [bold cyan]pip install --upgrade autocommitbot[/bold cyan]\n")
+                console.print("[dim]Run to update:[/dim] [bold cyan]pip install --upgrade autocommitbot[/bold cyan]\n")
         else:
             console.print("[dim]Could not reach PyPI to check for updates.[/dim]\n")
     except Exception:

@@ -89,7 +89,7 @@ def run_setup():
         with open(CONFIG_FILE, "r") as f:
             try:
                 current_config = json.load(f)
-            except:
+            except Exception:
                 current_config = {}
         # Pre-fill state from existing config
         schedule_type = current_config.get("schedule_type", "onlogon")
@@ -144,12 +144,12 @@ def run_setup():
 
             url = f"https://api.github.com/users/{username}/repos?per_page=100"
             try:
-                response = requests.get(url)
+                response = requests.get(url, timeout=10)
                 if response.status_code != 200:
                     print("Failed to fetch repositories from GitHub.")
                     continue
                 repos = response.json()
-            except:
+            except Exception:
                 print("Failed to reach GitHub API.")
                 continue
 

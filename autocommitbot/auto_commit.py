@@ -6,7 +6,6 @@ import socket
 import json
 import random
 import zipfile
-import shutil
 import requests
 import re
 
@@ -184,14 +183,17 @@ def shield_sensitive_data(repo_path):
     gitignore = os.path.join(repo_path, ".gitignore")
     existing_content = ""
     if os.path.exists(gitignore):
-        with open(gitignore, "r") as f: existing_content = f.read()
+        with open(gitignore, "r") as f:
+            existing_content = f.read()
     
     to_ignore = [f for f in SENSITIVE_FILES if f not in existing_content]
     if to_ignore:
         print(f"[SHIELD] 🛡️  SECURED: Protecting new sensitive patterns: {', '.join(to_ignore)}")
         with open(gitignore, "a") as f:
-            if not existing_content: f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
-            for item in to_ignore: f.write(f"\n{item}")
+            if not existing_content:
+                f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
+            for item in to_ignore:
+                f.write(f"\n{item}")
 
     # 2. PROACTIVE UN-TRACKING: Check if any sensitive file is currently being tracked by Git
     # This fixes the issue where a file is in .gitignore but still exists in the repo
@@ -220,8 +222,8 @@ def shield_sensitive_data(repo_path):
         
         if needs_untracking:
             subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
-            print(f"[SHIELD] ✅ Exposed files have been removed from Git tracking.")
-            print(f"[SHIELD] They will disappear from GitHub on your next push.")
+            print("[SHIELD] ✅ Exposed files have been removed from Git tracking.")
+            print("[SHIELD] They will disappear from GitHub on your next push.")
 
     except Exception as e:
         print(f"[SHIELD ERROR] Audit failed: {e}")
@@ -239,9 +241,10 @@ def shield_sensitive_data(repo_path):
         ).stdout
         for pattern in SENSITIVE_PATTERNS:
             if re.search(pattern, diff):
-                print(f"[SHIELD WARNING] ⚠️  I detected an API Key pattern inside one of your files!")
-                print(f"[SHIELD WARNING] I'm pushing this commit, but you should move that key to a .env file ASAP!")
-    except Exception: pass
+                print("[SHIELD WARNING] ⚠️  I detected an API Key pattern inside one of your files!")
+                print("[SHIELD WARNING] I'm pushing this commit, but you should move that key to a .env file ASAP!")
+    except Exception:
+        pass
     
     return True # Always continue now as requested
 
@@ -306,7 +309,7 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
                     return f"{message} | {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             except (KeyError, IndexError):
                 pass
-    except Exception as e:
+    except Exception:
         pass
         
     return fallback_message
