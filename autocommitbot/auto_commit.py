@@ -350,7 +350,25 @@ def run_bot(force_run=False):
                     print(f"Natural Activity Mode: Enforcing commit since it's been {int(hours_since)} hours to prevent gaps.")
         except Exception:
             pass
-            
+
+    # --- On Logon: cap at 5 commits per calendar day ---
+    if not force_run and config.get("schedule_type") == "onlogon":
+        try:
+            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            if os.path.exists(HISTORY_FILE):
+                with open(HISTORY_FILE, "r") as f:
+                    hist = json.load(f)
+                commits_today = sum(
+                    1 for entry in hist
+                    if entry.get("timestamp", "").startswith(today_str)
+                )
+                if commits_today >= 5:
+                    print(f"On-Logon Mode: Daily limit reached ({commits_today}/5 commits today). Skipping.")
+                    return
+                print(f"On-Logon Mode: {commits_today}/5 commits used today.")
+        except Exception:
+            pass
+
     cleanup_expired_snapshots()
 
     repos_with_changes = []

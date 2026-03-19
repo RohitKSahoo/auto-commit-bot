@@ -56,7 +56,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ### 🕐 Scheduling System
 
-* Logon trigger (Windows Task Scheduler)
+* Logon trigger (Windows Task Scheduler) — **capped at 5 commits per day**
 * Fixed-time daily scheduling
 * Randomized daily execution (9 AM – 11 PM)
 * Natural Activity Mode (probabilistic commits with 48h enforcement)
@@ -205,6 +205,7 @@ All commands follow the pattern: `autocommit <command>`
 * `restore` performs a **force push** — rewrites remote history, use with caution
 * `run` is for manual triggering, not regular use
 * Internet connection required for push, version check, and AI commit messages
+* **On Logon mode** is capped at **5 commits per calendar day** — if you log in more than 5 times, subsequent triggers are silently skipped to prevent commit spam
 * Always use `autocommit uninstall` instead of `pip uninstall` directly — running pip uninstall alone will leave an orphaned task in Windows Task Scheduler that silently fails on every trigger
 
 
