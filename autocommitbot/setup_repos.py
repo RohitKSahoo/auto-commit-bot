@@ -84,8 +84,20 @@ def run_setup():
     # ---------------------------------------------------------
     # Initial Check: Partial vs Full Setup
     # ---------------------------------------------------------
-    is_partial = os.path.exists(CONFIG_FILE)
+    # A user is considered "already set up" only when the config file exists
+    # AND contains a non-empty repositories list.  An empty {} file (the
+    # package default) or a file missing "repositories" always triggers the
+    # full first-run wizard.
     current_config = {}
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            try:
+                current_config = json.load(f)
+            except Exception:
+                current_config = {}
+
+    is_partial = bool(current_config.get("repositories"))
+
     choice_map = {
         "Update Repositories & Base Folder": 1,
         "Update Automation Schedule": 4,
@@ -94,17 +106,12 @@ def run_setup():
     }
 
     if is_partial:
-        with open(CONFIG_FILE, "r") as f:
-            try:
-                current_config = json.load(f)
-            except Exception:
-                current_config = {}
         # Pre-fill state from existing config
         schedule_type = current_config.get("schedule_type", "onlogon")
         schedule_time = current_config.get("schedule_time")
         use_ai = current_config.get("use_ai", False)
         gemini_key = current_config.get("gemini_key", "")
-        step = 0  # Start at the mode-selection menu
+        step = 0  # Returning user — show the mode-selection menu
     else:
         step = 1  # First run — go straight through the full wizard
         # Initialize defaults so they are always defined before step 6 uses them
@@ -171,7 +178,8 @@ def run_setup():
             console.print("  [bold green]Space[/bold green]   : Select or deselect a repository")
             console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your final selection\n")
 
-            repo_names = ["<-- Go Back"] + [repo["name"] for repo in repos]  # gh returns {"name": ...}
+            back_label_2 = "← Back to menu" if is_partial else "<-- Go Back"
+            repo_names = [back_label_2] + [repo["name"] for repo in repos]  # gh returns {"name": ...}
 
             ans = questionary.checkbox(
                 "Select repositories to automate:",
@@ -185,8 +193,8 @@ def run_setup():
                 print("No repositories selected.")
                 continue
 
-            if "<-- Go Back" in ans:
-                step = 1
+            if back_label_2 in ans:
+                step = 0 if is_partial else 1
                 continue
 
             selected_repos = ans

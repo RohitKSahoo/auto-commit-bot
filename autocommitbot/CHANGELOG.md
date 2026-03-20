@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-03-20
+
+### Fixed
+- First-time users no longer see the returning-user menu — setup now correctly detects a "configured" state by checking for a non-empty `repositories` list in `config.json`, not just whether the file exists
+- Bundled `config.json` was shipped with personal repo paths and a live Gemini API key; it is now empty `{}` so new installs start clean
+- Config parsing is now done once at startup (previously the file was opened twice in the partial-setup branch)
+
+### Security
+- Removed hardcoded Gemini API key and personal repository paths that were accidentally committed inside `autocommitbot/config.json`
+
+---
+
 ## [1.2.7] - 2026-03-20
 
 ### Added
