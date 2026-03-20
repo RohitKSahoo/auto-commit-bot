@@ -25,17 +25,24 @@ def check_git_installed():
 
 
 def check_git_auth(repo_path):
-    """Check if GitHub authentication works"""
+    """Check if GitHub authentication works for a repo.
+    
+    Uses a hard 10-second timeout so a missing credential prompt
+    can never block setup indefinitely.
+    """
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["git", "ls-remote"],
             cwd=repo_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            check=True
+            stdin=subprocess.DEVNULL,   # prevents interactive credential prompts
+            timeout=10                  # never hang longer than 10 s
         )
-        return True
-    except subprocess.CalledProcessError:
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+    except Exception:
         return False
 
 
@@ -373,14 +380,22 @@ def run_setup():
                 repo_paths.append(repo_path)
 
             print("\nVerification...")
-            auth_ok = True
+            failed_repos = []
             for path in repo_paths:
-                if not check_git_auth(path):
-                    print(f"Auth warning for: {path}")
-                    auth_ok = False
+                print(f"  Checking: {os.path.basename(path)}...", end=" ", flush=True)
+                if check_git_auth(path):
+                    print("✔ OK")
+                else:
+                    print("✘ Auth warning")
+                    failed_repos.append(path)  # log and move on — never block here
 
-            if not auth_ok:
-                print("Warning: GitHub authentication check failed. You may need to 'git push' manually once.\n")
+            if failed_repos:
+                print("\n⚠️  GitHub authentication check failed for:")
+                for fp in failed_repos:
+                    print(f"   • {fp}")
+                print("Tip: run 'git push' once inside each folder above to cache your credentials.\n")
+            else:
+                print("All repositories authenticated successfully.\n")
 
             if is_partial:
                 current_config["repositories"] = repo_paths

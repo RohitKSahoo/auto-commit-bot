@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Auth verification during setup no longer hangs forever when a repo has missing or expired credentials — `git ls-remote` now has a hard 10-second timeout and `stdin` is closed to prevent interactive credential prompts from blocking the process
+- All repos are now checked during verification even if one fails — failures are collected and shown as a grouped summary with a fix tip at the end, instead of stopping on the first bad repo
+
 ## [1.2.4] - 2025-03-20
 
 ### Added
