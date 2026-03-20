@@ -106,6 +106,11 @@ def run_setup():
         step = 0  # Start at the mode-selection menu
     else:
         step = 1  # First run — go straight through the full wizard
+        # Initialize defaults so they are always defined before step 6 uses them
+        schedule_type = "onlogon"
+        schedule_time = None
+        use_ai = False
+        gemini_key = ""
 
     while True:
 
@@ -203,7 +208,7 @@ def run_setup():
             if not ans:
                 continue
             base_path = ans
-            step = 6  # Jump to cloning
+            step = 4  # Proceed to schedule selection
 
         # ── Step 4: Schedule ──────────────────────────────────────────────────
         elif step == 4:

@@ -8,11 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-03-20
+
 ### Fixed
+- `UnboundLocalError: cannot access local variable 'schedule_type'` crash on first-time setup — `schedule_type`, `schedule_time`, `use_ai`, and `gemini_key` are now always initialised with safe defaults for fresh installs, even before the schedule and AI wizard steps run
+- First-time setup wizard no longer skips the schedule and AI steps — step 3 (base folder) now correctly advances to step 4 (schedule selection) instead of jumping straight to step 6 (clone & save), which previously left the config variables undefined
 - Auth verification during setup no longer hangs forever when a repo has missing or expired credentials — `git ls-remote` now has a hard 10-second timeout and `stdin` is closed to prevent interactive credential prompts from blocking the process
 - All repos are now checked during verification even if one fails — failures are collected and shown as a grouped summary with a fix tip at the end, instead of stopping on the first bad repo
 
-## [1.2.4] - 2025-03-20
+## [1.2.4] - 2026-03-20
 
 ### Added
 - Smart daily limit — real code changes always push through, the 5/day cap now only applies to random activity commits
