@@ -1,11 +1,12 @@
-import requests
 import json
 import os
+import requests
 import subprocess
 import questionary
 import random
 
 from autocommitbot.scheduler import create_startup_task
+from autocommitbot.gh_auth import require_gh_auth, get_user_repos
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -141,33 +142,25 @@ def run_setup():
                 gemini_key = ""
             continue
 
-        # ── Step 1: GitHub username ───────────────────────────────────────────
+        # ── Step 1: Verify GitHub identity via gh CLI & fetch repos ─────────
         elif step == 1:
-            back_hint = " (or 'b' to go back to menu)" if is_partial else " (or 'q' to quit)"
-            ans = input(f"Enter your GitHub username{back_hint}: ").strip()
-            if ans.lower() == 'q' and not is_partial:
-                return
-            if ans.lower() == 'b' and is_partial:
-                step = 0
-                continue
-            if not ans:
-                continue
-            username = ans
+            # require_gh_auth() exits the process with a friendly message if
+            # gh is missing or the user is not authenticated — no manual input.
+            username = require_gh_auth()
 
-            url = f"https://api.github.com/users/{username}/repos?per_page=100"
-            try:
-                response = requests.get(url, timeout=10)
-                if response.status_code != 200:
-                    print("Failed to fetch repositories from GitHub.")
-                    continue
-                repos = response.json()
-            except Exception:
-                print("Failed to reach GitHub API.")
-                continue
+            console.print("[dim]📦 Fetching your repositories...[/dim]")
+            raw_repos = get_user_repos(username)
+
+            # Normalise to the shape the rest of setup expects:
+            # a list of dicts with at least a "name" key.
+            repos = raw_repos  # already [{"name": ..., "url": ..., "visibility": ...}]
 
             if not repos:
-                print("No repositories found.")
-                continue
+                console.print(
+                    "[yellow]No repositories found for your account.[/yellow]\n"
+                    "Create at least one repo on GitHub, then re-run setup."
+                )
+                return
 
             step = 2
 
@@ -178,7 +171,7 @@ def run_setup():
             console.print("  [bold green]Space[/bold green]   : Select or deselect a repository")
             console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your final selection\n")
 
-            repo_names = ["<-- Go Back"] + [repo["name"] for repo in repos]
+            repo_names = ["<-- Go Back"] + [repo["name"] for repo in repos]  # gh returns {"name": ...}
 
             ans = questionary.checkbox(
                 "Select repositories to automate:",
@@ -380,8 +373,13 @@ def run_setup():
                 repo_path = os.path.join(base_path, repo)
                 if not os.path.exists(repo_path):
                     print(f"\nCloning repository: {repo}")
-                    clone_url = f"https://github.com/{username}/{repo}.git"
-                    subprocess.run(["git", "clone", clone_url, repo_path])
+                    # Use gh to clone so the authenticated session is reused
+                    clone_result = subprocess.run(
+                        ["gh", "repo", "clone", f"{username}/{repo}", repo_path]
+                    )
+                    if clone_result.returncode != 0:
+                        print(f"  ✘ Failed to clone {repo}. Skipping.")
+                        continue
                 repo_paths.append(repo_path)
 
             print("\nVerification...")

@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.2.4)
+# 🚀 AutoCommitBot (v1.2.7)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -6,7 +6,7 @@
 
 **Maintain a professional GitHub presence with AI-powered automation and built-in security.**
 
-AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers who want to maintain a consistent contribution history without the manual overhead. It monitors your local repositories, generates meaningful commit messages using Google's Gemini AI, and manages the full Git lifecycle automatically.
+AutoCommitBot is an intelligent CLI tool for developers who want a consistent contribution history without the manual overhead. It monitors your local repositories, generates meaningful commit messages using Google's Gemini AI, and manages the full Git lifecycle automatically — all authenticated through the GitHub CLI so no tokens or passwords ever need to be configured by hand.
 
 ---
 
@@ -20,6 +20,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ## 🌟 Why AutoCommitBot?
 
+* **Zero-friction auth** — Piggybacks on your existing `gh` login; no tokens, no PATs, no manual username entry
 * **AI Commit Messages** — Generates meaningful, context-aware commits instead of generic updates
 * **Security (Secret Shield)** — Prevents accidental exposure of sensitive files and credentials
 * **Natural Activity Mode** — Simulates realistic developer commit patterns
@@ -32,6 +33,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ### Core Capabilities
 
+* **GitHub CLI Auth** — Identity verified through your active `gh` session; repos fetched & cloned via `gh` automatically
 * **AI Commit Generation** — Context-aware commit messages using Gemini with model fallback
 * **Security Layer (Secret Shield)** — Automatic protection against sensitive file and credential exposure
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
@@ -45,10 +47,11 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ### ⚙️ Setup & Configuration
 
-* GitHub Repository Discovery via API
+* Identity verified via GitHub CLI (`gh auth login`) — no username prompt, no tokens
+* Repository list fetched with `gh repo list` (authenticated)
 * Interactive multi-select repo setup
 * Base folder configuration
-* Automatic cloning of missing repos
+* Automatic cloning via `gh repo clone` (inherits your `gh` session)
 * Git authentication verification
 * Backward navigation during setup
 
@@ -118,13 +121,14 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ## ⚙️ How It Works
 
-1. Detects changes in tracked repositories
-2. Syncs with remote using `git pull`
-3. Analyzes `git diff` using Gemini AI
-4. Generates a contextual commit message
-5. Runs security checks (Secret Shield)
-6. Commits and pushes changes
-7. Stores a backup snapshot
+1. Verifies your GitHub identity via the GitHub CLI (`gh`)
+2. Detects changes in tracked repositories
+3. Syncs with remote using `git pull`
+4. Analyzes `git diff` using Gemini AI
+5. Generates a contextual commit message
+6. Runs security checks (Secret Shield)
+7. Commits and pushes changes
+8. Stores a backup snapshot
 
 All of this runs automatically in the background.
 
@@ -134,15 +138,58 @@ All of this runs automatically in the background.
 
 ### Prerequisites
 
-* Python 3.8+
-* Git installed and configured
-* (Recommended) Gemini API Key → https://aistudio.google.com/app/apikey
+Before installing AutoCommitBot, make sure you have all of the following:
+
+| Requirement | Why it's needed | Get it |
+|---|---|---|
+| **Python 3.8+** | Runtime | [python.org](https://www.python.org/downloads/) |
+| **Git** | Version control | [git-scm.com](https://git-scm.com/) |
+| **GitHub CLI (`gh`)** | Identity verification & repo access | [cli.github.com](https://cli.github.com/) |
+| **Gemini API key** *(optional but recommended)* | AI-generated commit messages | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+
+> **Important:** AutoCommitBot v1.2.7+ requires the GitHub CLI. It uses your existing `gh` login to verify who you are and to fetch and clone your repositories — no passwords or personal-access tokens needed.
+
+---
+
+### Step 0 — Install & authenticate the GitHub CLI
+
+If you haven't already:
+
+```bash
+# macOS (Homebrew)
+brew install gh
+
+# Windows (winget)
+winget install --id GitHub.cli
+
+# Debian / Ubuntu
+sudo apt install gh
+```
+
+Then sign in:
+
+```bash
+gh auth login
+```
+
+Follow the interactive prompts (choose HTTPS, then authenticate via browser). Confirm it worked:
+
+```bash
+gh auth status
+# → ✓ Logged in to github.com as YourUsername
+```
 
 ---
 
 ## 📦 Installation
 
-### Option 1: From Source
+### Option 1: Via pip (Recommended)
+
+```bash
+pip install autocommitbot
+```
+
+### Option 2: From Source
 
 ```bash
 git clone https://github.com/RohitKSahoo/auto-commit-bot.git
@@ -150,11 +197,26 @@ cd auto-commit-bot
 pip install -e .
 ```
 
-### Option 2: Via pip (Recommended)
+---
+
+## 🛠️ First-Time Setup
+
+Run the setup wizard once after installation:
 
 ```bash
-pip install autocommitbot
+autocommit setup
 ```
+
+The wizard will:
+
+1. **Verify your GitHub identity** via `gh auth status` — no username prompt
+2. **Fetch your repositories** from GitHub using `gh repo list`
+3. Let you **select which repos** to automate (multi-select checklist)
+4. Ask for a **base folder** where repos should be cloned if not already present
+5. Ask you to pick a **schedule** (on logon / fixed time / natural activity)
+6. Optionally let you enter a **Gemini API key** for AI commit messages
+
+> **Tip:** Running `autocommit setup` again on an already-configured machine shows a short menu so you can update just one section (Repositories, Schedule, or AI key) without repeating the full wizard.
 
 ---
 
@@ -170,8 +232,6 @@ All commands follow the pattern: `autocommit <command>`
 |---|---|
 | `autocommit setup` | First-time wizard, **or** edit repos / schedule / AI |
 | `autocommit config-backup <days>` | Set how long backups are kept |
-
-> **Tip:** Running `autocommit setup` again on a configured machine shows a short menu so you can update just one section (Repositories, Schedule, or AI key) without repeating the full wizard.
 
 ### 📁 Repositories
 
@@ -203,13 +263,13 @@ All commands follow the pattern: `autocommit <command>`
 
 ### ⚠️ Notes
 
+* **GitHub CLI required** — `autocommit setup` will exit with a clear error if `gh` is not installed or you're not logged in
 * Automation runs only on tracked repositories
 * `restore` performs a **force push** — rewrites remote history, use with caution
 * `run` is for manual triggering, not regular use
 * Internet connection required for push, version check, and AI commit messages
 * **On Logon mode** caps **random activity** at 5 per calendar day — real code changes always push through, even after the cap is reached
 * Always use `autocommit uninstall` instead of `pip uninstall` directly — running pip uninstall alone will leave an orphaned task in Windows Task Scheduler that silently fails on every trigger
-
 
 ---
 
@@ -223,26 +283,24 @@ autocommit version
 
 Example output when up to date:
 ```
-AutoCommitBot  v1.2.4
+AutoCommitBot  v1.2.7
 Checking for updates...
-✔ You are on the latest version (1.2.4).
+✔ You are on the latest version (1.2.7).
 
-🎉 New in this version (v1.2.4):
-  • Smart daily limit — real code changes always push, 5/day cap only applies to random activity commits
-  • "What's New" display — see what changed after updating the bot
-  • CHANGELOG.md — full version history now tracked in the repository
+🎉 New in this version (v1.2.7):
+  • GitHub CLI authentication layer — no username prompt, no tokens
+  • Repos fetched and cloned via gh automatically
 ```
 
 Example output when an update is available:
 ```
-AutoCommitBot  v1.2.3
+AutoCommitBot  v1.2.6
 Checking for updates...
-⚡ New version available: 1.2.4 (you have 1.2.3)
+⚡ New version available: 1.2.7 (you have 1.2.6)
 
-📋 What's New in v1.2.4:
-  • Smart daily limit — real code changes always push, 5/day cap only applies to random activity commits
-  • "What's New" display — see what changed after updating the bot
-  • CHANGELOG.md — full version history now tracked in the repository
+📋 What's New in v1.2.7:
+  • GitHub CLI authentication layer — no username prompt, no tokens
+  • Repos fetched and cloned via gh automatically
 
 Run to update:  pip install --upgrade autocommitbot
 ```
@@ -255,11 +313,11 @@ pip install --upgrade autocommitbot
 
 ---
 
-
 ## 🔐 Security Notes
 
 * Your code is **not stored externally** (only analyzed for commit messages)
 * Sensitive files are automatically excluded via `.gitignore`
+* Identity is verified through your local `gh` session — no credentials are stored by AutoCommitBot
 * `restore` uses **force push** — use with caution
 
 ---
@@ -290,5 +348,4 @@ See the LICENSE file for full details.
 
 ## 🧾 TL;DR
 
-AutoCommitBot is a smart Git automation layer with AI, security, and recovery built in.
-it’s a **smart Git workflow layer with AI, security, and recovery built in**.
+AutoCommitBot is a smart Git automation layer with AI, security, and recovery built in — authenticated entirely through your existing GitHub CLI session.
