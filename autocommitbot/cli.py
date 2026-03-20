@@ -600,10 +600,13 @@ def version():
     """Show the installed version and check PyPI for available updates.
 
     Compares your installed version against the latest release on PyPI.
-    If a newer version is available, prints the pip upgrade command.
+    If a newer version is available, prints the pip upgrade command along
+    with a summary of what's new in that release.
 
     Requires an internet connection to check for updates.
     """
+    from autocommitbot.changelog import get_whats_new
+
     try:
         installed = get_version("autocommitbot")
     except PackageNotFoundError:
@@ -622,10 +625,26 @@ def version():
         if response.status_code == 200:
             latest = response.json()["info"]["version"]
             if latest == installed:
-                console.print(f"[green]✔ You are on the latest version ({installed}).[/green]\n")
+                console.print(f"[green]✔ You are on the latest version ({installed}).[/green]")
+
+                # Show what's new in the current version
+                highlights = get_whats_new(installed)
+                if highlights:
+                    console.print(f"\n[bold magenta]🎉 New in this version (v{installed}):[/bold magenta]")
+                    for item in highlights:
+                        console.print(f"  [dim]•[/dim] {item}")
+                console.print()
             else:
                 console.print(f"[yellow]⚡ New version available: [bold]{latest}[/bold] (you have {installed})[/yellow]")
-                console.print("[dim]Run to update:[/dim] [bold cyan]pip install --upgrade autocommitbot[/bold cyan]\n")
+
+                # Show what's new in the available version
+                highlights = get_whats_new(latest)
+                if highlights:
+                    console.print(f"\n[bold magenta]📋 What's New in v{latest}:[/bold magenta]")
+                    for item in highlights:
+                        console.print(f"  [dim]•[/dim] {item}")
+
+                console.print(f"\n[dim]Run to update:[/dim]  [bold cyan]pip install --upgrade autocommitbot[/bold cyan]\n")
         else:
             console.print("[dim]Could not reach PyPI to check for updates.[/dim]\n")
     except Exception:

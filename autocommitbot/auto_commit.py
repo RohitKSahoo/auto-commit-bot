@@ -354,23 +354,8 @@ def run_bot(force_run=False):
         except Exception:
             pass
 
-    # --- On Logon: cap at 5 commits per calendar day ---
-    if not force_run and config.get("schedule_type") == "onlogon":
-        try:
-            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-            if os.path.exists(HISTORY_FILE):
-                with open(HISTORY_FILE, "r") as f:
-                    hist = json.load(f)
-                commits_today = sum(
-                    1 for entry in hist
-                    if entry.get("timestamp", "").startswith(today_str)
-                )
-                if commits_today >= 5:
-                    print(f"On-Logon Mode: Daily limit reached ({commits_today}/5 commits today). Skipping.")
-                    return
-                print(f"On-Logon Mode: {commits_today}/5 commits used today.")
-        except Exception:
-            pass
+    # NOTE: Daily limit for random activity commits is checked later,
+    # only in the fallback path. Real user changes always push through.
 
     cleanup_expired_snapshots()
 
@@ -455,6 +440,25 @@ def run_bot(force_run=False):
                     print(f"Git Error: {push_process.stderr.strip()}")
                     print(f"Git Pull Merge Error: {pull_process.stderr.strip()}")
     else:
+        # --- Daily limit: cap random activity commits at 5 per day ---
+        if not force_run:
+            try:
+                today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+                if os.path.exists(HISTORY_FILE):
+                    with open(HISTORY_FILE, "r") as f:
+                        hist = json.load(f)
+                    random_today = sum(
+                        1 for entry in hist
+                        if entry.get("timestamp", "").startswith(today_str)
+                        and entry.get("type") == "Random Activity"
+                    )
+                    if random_today >= 5:
+                        print(f"Daily limit reached ({random_today}/5 random activity commits today). Skipping.")
+                        return
+                    print(f"Random activity commits today: {random_today}/5")
+            except Exception:
+                pass
+
         print("All changes are already committed. Performing a random activity commit.")
         repo_path = random.choice(repos)
 

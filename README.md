@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.2.3)
+# 🚀 AutoCommitBot (v1.2.4)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -56,7 +56,7 @@ AutoCommitBot is an intelligent, cross-platform CLI tool designed for developers
 
 ### 🕐 Scheduling System
 
-* Logon trigger (Windows Task Scheduler) — **capped at 5 commits per day**
+* Logon trigger (Windows Task Scheduler) — **5/day cap on random activity only; real code changes always push through**
 * Fixed-time daily scheduling
 * Randomized daily execution (9 AM – 11 PM)
 * Natural Activity Mode (probabilistic commits with 48h enforcement)
@@ -207,7 +207,7 @@ All commands follow the pattern: `autocommit <command>`
 * `restore` performs a **force push** — rewrites remote history, use with caution
 * `run` is for manual triggering, not regular use
 * Internet connection required for push, version check, and AI commit messages
-* **On Logon mode** is capped at **5 commits per calendar day** — if you log in more than 5 times, subsequent triggers are silently skipped to prevent commit spam
+* **On Logon mode** caps **random activity** at 5 per calendar day — real code changes always push through, even after the cap is reached
 * Always use `autocommit uninstall` instead of `pip uninstall` directly — running pip uninstall alone will leave an orphaned task in Windows Task Scheduler that silently fails on every trigger
 
 
@@ -223,16 +223,27 @@ autocommit version
 
 Example output when up to date:
 ```
-AutoCommitBot  v1.1.6
+AutoCommitBot  v1.2.4
 Checking for updates...
-✔ You are on the latest version (1.1.6).
+✔ You are on the latest version (1.2.4).
+
+🎉 New in this version (v1.2.4):
+  • Smart daily limit — real code changes always push, 5/day cap only applies to random activity commits
+  • "What's New" display — see what changed after updating the bot
+  • CHANGELOG.md — full version history now tracked in the repository
 ```
 
 Example output when an update is available:
 ```
-AutoCommitBot  v1.1.5
+AutoCommitBot  v1.2.3
 Checking for updates...
-⚡ New version available: 1.1.6 (you have 1.1.5)
+⚡ New version available: 1.2.4 (you have 1.2.3)
+
+📋 What's New in v1.2.4:
+  • Smart daily limit — real code changes always push, 5/day cap only applies to random activity commits
+  • "What's New" display — see what changed after updating the bot
+  • CHANGELOG.md — full version history now tracked in the repository
+
 Run to update:  pip install --upgrade autocommitbot
 ```
 
