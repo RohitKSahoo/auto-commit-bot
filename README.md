@@ -280,11 +280,15 @@ Maintained by **[@RohitKSahoo](https://github.com/RohitKSahoo)**
 
 ## 📄 License
 
-Licensed under the MIT License. See `LICENSE` for details.
+This project is licensed under the GNU General Public License v3.0.
+
+You are free to use, modify, and distribute this software under the terms of the license. Any derivative work must also be open-sourced under GPL v3.
+
+See the LICENSE file for full details.
 
 ---
 
 ## 🧾 TL;DR
 
-AutoCommitBot is not just automation—
+AutoCommitBot is a smart Git automation layer with AI, security, and recovery built in.
 it’s a **smart Git workflow layer with AI, security, and recovery built in**.
