@@ -8,6 +8,9 @@ import random
 import zipfile
 import requests
 import re
+from rich.console import Console
+
+console = Console()
 
 
 
@@ -75,7 +78,7 @@ def take_snapshot(repo_path):
                     
         return zip_name
     except Exception as e:
-        print(f"Snapshot failed: {e}")
+        console.print(f"[bold red]Snapshot failed:[/bold red] {e}")
         return None
 
 
@@ -152,21 +155,21 @@ def internet_available():
 
 
 def wait_for_internet(max_attempts=12):
-    print("Checking internet connection...")
+    console.print("[dim]Checking internet connection...[/dim]")
 
     attempts = 0
 
     while not internet_available():
 
         if attempts >= max_attempts:
-            print("Internet not available. Skipping run.")
+            console.print("[bold red]Internet not available. Skipping run.[/bold red]")
             return False
 
-        print("Waiting for internet...")
+        console.print("[yellow]Waiting for internet...[/yellow]")
         time.sleep(10)
         attempts += 1
 
-    print("Internet detected")
+    console.print("[bold green]✔ Internet detected[/bold green]")
     return True
 
 # --- Secret Shield Configuration ---
@@ -188,7 +191,7 @@ def shield_sensitive_data(repo_path):
     
     to_ignore = [f for f in SENSITIVE_FILES if f not in existing_content]
     if to_ignore:
-        print(f"[SHIELD] 🛡️  SECURED: Protecting new sensitive patterns: {', '.join(to_ignore)}")
+        console.print(f"[bold blue]🛡️  [SHIELD][/bold blue] [green]SECURED:[/green] Protecting new sensitive patterns: [bold cyan]{', '.join(to_ignore)}[/bold cyan]")
         with open(gitignore, "a") as f:
             if not existing_content:
                 f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
@@ -216,17 +219,17 @@ def shield_sensitive_data(repo_path):
             cleaned_pattern = s_file.replace("*.", "")
             for t_file in tracked_files:
                 if t_file == s_file or t_file.endswith(cleaned_pattern) or os.path.basename(t_file) == s_file:
-                    print(f"[SHIELD] ⚠️  URGENT: '{t_file}' is exposed on GitHub! Un-tracking now...")
+                    console.print(f"[bold blue]🛡️  [SHIELD][/bold blue] [bold red]URGENT:[/bold red] '[cyan]{t_file}[/cyan]' is exposed on GitHub! Un-tracking now...")
                     subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True)
                     needs_untracking = True
         
         if needs_untracking:
             subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
-            print("[SHIELD] ✅ Exposed files have been removed from Git tracking.")
-            print("[SHIELD] They will disappear from GitHub on your next push.")
+            console.print("[bold blue]🛡️  [SHIELD][/bold blue] [bold green]✔ Exposed files have been removed from Git tracking.[/bold green]")
+            console.print("[bold blue]🛡️  [SHIELD][/bold blue] [dim]They will disappear from GitHub on your next push.[/dim]")
 
     except Exception as e:
-        print(f"[SHIELD ERROR] Audit failed: {e}")
+        console.print(f"[bold red][SHIELD ERROR] Audit failed:[/bold red] {e}")
 
     # 3. Key Scanning (Purely informative if found in tracked files)
     try:
@@ -241,8 +244,8 @@ def shield_sensitive_data(repo_path):
         ).stdout
         for pattern in SENSITIVE_PATTERNS:
             if re.search(pattern, diff):
-                print("[SHIELD WARNING] ⚠️  I detected an API Key pattern inside one of your files!")
-                print("[SHIELD WARNING] I'm pushing this commit, but you should move that key to a .env file ASAP!")
+                console.print("[bold blue]🛡️  [SHIELD][/bold blue] [bold yellow]WARNING:[/bold yellow] [red]I detected an API Key pattern inside one of your files![/red]")
+                console.print("[bold blue]🛡️  [SHIELD][/bold blue] [dim]I'm pushing this commit, but you should move that key to a .env file ASAP![/dim]")
     except Exception:
         pass
     
@@ -252,7 +255,7 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
     if not config.get("use_ai") or not config.get("gemini_key"):
         return fallback_message
         
-    print("Analyzing code diff with Gemini AI...")
+    console.print("[dim]Analyzing code diff with Gemini AI...[/dim]")
     try:
         diff_process = subprocess.run(
             ["git", "diff", "--cached"],
@@ -320,7 +323,7 @@ def run_bot(force_run=False):
         return
 
     if not os.path.exists(CONFIG_FILE):
-        print("Configuration file not found.")
+        console.print("[bold red]Configuration file not found.[/bold red]")
         return
 
     with open(CONFIG_FILE, "r") as f:
@@ -329,7 +332,7 @@ def run_bot(force_run=False):
     repos = config.get("repositories", [])
 
     if not repos:
-        print("No repositories configured.")
+        console.print("[bold red]No repositories configured.[/bold red]")
         return
         
     if not force_run and config.get("schedule_type") == "random_day_time":
@@ -342,15 +345,15 @@ def run_bot(force_run=False):
                 hours_since = (datetime.datetime.now() - last_commit_dt).total_seconds() / 3600.0
                 
                 if hours_since < 12:
-                    print(f"Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.")
+                    console.print(f"[dim]Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.[/dim]")
                     return
                 elif hours_since < 48:
                     if random.random() > 0.10:
-                        print("Natural Activity Mode: Skipped this hour to simulate natural gaps (10% execution chance).")
+                        console.print("[dim]Natural Activity Mode: Skipped this hour to simulate natural gaps (10% execution chance).[/dim]")
                         return
-                    print(f"Natural Activity Mode: Random trigger unexpectedly hit after {int(hours_since)} hours!")
+                    console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Random trigger unexpectedly hit after {int(hours_since)} hours![/yellow]")
                 else:
-                    print(f"Natural Activity Mode: Enforcing commit since it's been {int(hours_since)} hours to prevent gaps.")
+                    console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Enforcing commit since it's been {int(hours_since)} hours to prevent gaps.[/yellow]")
         except Exception:
             pass
 
@@ -382,12 +385,12 @@ def run_bot(force_run=False):
             repos_with_changes.append(path)
 
     if repos_with_changes:
-        print(f"Found uncommitted changes in {len(repos_with_changes)} repositories.")
+        console.print(f"\n[bold green]✔ Found uncommitted changes in {len(repos_with_changes)} repositories.[/bold green]")
         for repo_path in repos_with_changes:
-            print("Committing uncommitted user changes for:", repo_path)
+            console.print(f"\n[bold yellow]Committing changes for:[/bold yellow] [cyan]{repo_path}[/cyan]")
             
             # Take physical backup of files before they get committed by bot
-            print(f"Creating snapshot for {repo_path}...")
+            console.print(f"[dim]Creating snapshot...[/dim]")
             snapshot_file = take_snapshot(repo_path)
             
             os.chdir(repo_path)
@@ -399,7 +402,7 @@ def run_bot(force_run=False):
                 stdin=subprocess.DEVNULL
             )
             if add_process.returncode != 0:
-                print(f"Git add failed: {add_process.stderr.strip()}")
+                console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
                 continue
 
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -407,7 +410,7 @@ def run_bot(force_run=False):
             
             commit_message = generate_ai_commit_message(repo_path, fallback_commit_message, config)
             
-            print("Commit message:", commit_message)
+            console.print(f"[bold magenta]Commit message:[/bold magenta] {commit_message}")
             
             commit_process = subprocess.run(
                 ["git", "commit", "-m", commit_message],
@@ -417,28 +420,28 @@ def run_bot(force_run=False):
             )
             
             if "nothing to commit" in commit_process.stdout.lower():
-                print("Nothing new to commit.")
+                console.print("[yellow]Nothing new to commit.[/yellow]")
                 continue
                 
             push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
             
             if push_process.returncode == 0:
-                print("Commit pushed successfully.")
+                console.print("[bold green]✔ Commit pushed successfully.[/bold green]")
                 log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
             else:
-                print("Push failed. Attempting to pull remote changes and retry...")
+                console.print("[bold yellow]Push failed. Attempting to pull remote changes and retry...[/bold yellow]")
                 pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
                 if pull_process.returncode == 0:
                     retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
                     if retry_push.returncode == 0:
-                        print("Successfully pulled remote changes and pushed.")
+                        console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")
                         log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
                     else:
-                        print(f"Git Push Retry Error: {retry_push.stderr.strip()}")
+                        console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
                 else:
                     subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL)
-                    print(f"Git Error: {push_process.stderr.strip()}")
-                    print(f"Git Pull Merge Error: {pull_process.stderr.strip()}")
+                    console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
+                    console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
     else:
         # --- Daily limit: cap random activity commits at 5 per day ---
         if not force_run:
@@ -453,24 +456,24 @@ def run_bot(force_run=False):
                         and entry.get("type") == "Random Activity"
                     )
                     if random_today >= 5:
-                        print(f"Daily limit reached ({random_today}/5 random activity commits today). Skipping.")
+                        console.print(f"[yellow]Daily limit reached ({random_today}/5 random activity commits today). Skipping.[/yellow]")
                         return
-                    print(f"Random activity commits today: {random_today}/5")
+                    console.print(f"[dim]Random activity commits today: {random_today}/5[/dim]")
             except Exception:
                 pass
 
-        print("All changes are already committed. Performing a random activity commit.")
+        console.print("\n[bold yellow]No user changes found. Performing a random activity commit.[/bold yellow]")
         repo_path = random.choice(repos)
 
-        print("Selected repository:", repo_path)
+        console.print(f"[bold yellow]Selected repository:[/bold yellow] [cyan]{repo_path}[/cyan]")
 
         git_folder = os.path.join(repo_path, ".git")
 
         if not os.path.isdir(git_folder):
-            print("Selected folder is not a git repository:", repo_path)
+            console.print(f"[bold red]Selected folder is not a git repository:[/bold red] {repo_path}")
             return
 
-        print(f"Creating snapshot for {repo_path}...")
+        console.print("[dim]Creating snapshot...[/dim]")
         snapshot_file = take_snapshot(repo_path)
 
         os.chdir(repo_path)
@@ -483,7 +486,7 @@ def run_bot(force_run=False):
 
         commit_message = f"{commit_message} | {timestamp}"
 
-        print("Commit message:", commit_message)
+        console.print(f"[bold magenta]Commit message:[/bold magenta] {commit_message}")
 
         add_process = subprocess.run(
             ["git", "add", SAFE_FILE], 
@@ -492,7 +495,7 @@ def run_bot(force_run=False):
             stdin=subprocess.DEVNULL
         )
         if add_process.returncode != 0:
-            print(f"Git add failed: {add_process.stderr.strip()}")
+            console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
             return
 
         commit_process = subprocess.run(
@@ -503,28 +506,28 @@ def run_bot(force_run=False):
         )
 
         if "nothing to commit" in commit_process.stdout.lower():
-            print("Nothing new to commit.")
+            console.print("[yellow]Nothing new to commit.[/yellow]")
             return
 
         push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
 
         if push_process.returncode == 0:
-            print("Commit pushed successfully.")
+            console.print("[bold green]✔ Commit pushed successfully.[/bold green]")
             log_commit(repo_path, commit_message, is_random=True, snapshot_file=snapshot_file)
         else:
-            print("Push failed. Attempting to pull remote changes and retry...")
+            console.print("[bold yellow]Push failed. Attempting to pull remote changes and retry...[/bold yellow]")
             pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
             if pull_process.returncode == 0:
                 retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
                 if retry_push.returncode == 0:
-                    print("Successfully pulled remote changes and pushed.")
+                    console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")
                     log_commit(repo_path, commit_message, is_random=True, snapshot_file=snapshot_file)
                 else:
-                    print(f"Git Push Retry Error: {retry_push.stderr.strip()}")
+                    console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
             else:
                 subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL)
-                print(f"Git Error: {push_process.stderr.strip()}")
-                print(f"Git Pull Merge Error: {pull_process.stderr.strip()}")
+                console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
+                console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
 
 if __name__ == "__main__":
     run_bot()
