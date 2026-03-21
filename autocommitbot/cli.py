@@ -13,6 +13,29 @@ from importlib.metadata import version as get_version, PackageNotFoundError
 from autocommitbot.setup_repos import run_setup
 from autocommitbot.auto_commit import run_bot
 from autocommitbot.scheduler import create_startup_task, remove_startup_task
+import re
+
+def get_dynamic_version():
+    """Returns the live version from pyproject.toml (dev) or package metadata."""
+    # 1. Try reading from pyproject.toml at the root (for development)
+    try:
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        toml_path = os.path.join(root_dir, "pyproject.toml")
+        if os.path.exists(toml_path):
+            with open(toml_path, "r") as f:
+                content = f.read()
+                # Find version = "x.y.z"
+                match = re.search(r'version\s*=\s*"([^"]+)"', content)
+                if match:
+                    return match.group(1)
+    except Exception:
+        pass
+        
+    # 2. Standard package fallback
+    try:
+        return get_version("autocommitbot")
+    except PackageNotFoundError:
+        return "1.2.9" # Absolute fallback match for current dev state
 
 app = typer.Typer(help="AutoCommitBot CLI")
 console = Console()
@@ -34,10 +57,7 @@ def main(ctx: typer.Context):
                                                                                 BOT"""
         console.print(f"[bold cyan]{banner}[/bold cyan]")
         console.print("                                              [bold yellow]Developed by @RohitKSahoo[/bold yellow]\n")
-        try:
-            _ver = get_version("autocommitbot")
-        except PackageNotFoundError:
-            _ver = "?"
+        _ver = get_dynamic_version()
         console.print(f"[bold green]✔ Installation complete!  v{_ver}[/bold green]\n")
 
         console.print("[dim]  All commands follow:[/dim]  [bold cyan]autocommit [cyan]<command>[/cyan]\n")
@@ -607,11 +627,7 @@ def version():
     """
     from autocommitbot.changelog import get_whats_new
 
-    try:
-        installed = get_version("autocommitbot")
-    except PackageNotFoundError:
-        console.print("[red]Could not determine installed version.[/red]")
-        return
+    installed = get_dynamic_version()
 
     console.print(f"\n[bold cyan]AutoCommitBot[/bold cyan]  v{installed}")
 
