@@ -88,7 +88,7 @@ def run_setup():
     # AND contains a non-empty repositories list.  An empty {} file (the
     # package default) or a file missing "repositories" always triggers the
     # full first-run wizard.
-    current_config = {}
+    current_config: dict = {}
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             try:
@@ -97,6 +97,12 @@ def run_setup():
                 current_config = {}
 
     is_partial = bool(current_config.get("repositories"))
+
+    # Initialise wizard variables
+    username = ""
+    repos = []
+    selected_repos = []
+    base_path = ""
 
     choice_map = {
         "Update Repositories & Base Folder": 1,
@@ -179,11 +185,22 @@ def run_setup():
             console.print("  [bold magenta]Enter[/bold magenta]   : Confirm your final selection\n")
 
             back_label_2 = "← Back to menu" if is_partial else "<-- Go Back"
-            repo_names = [back_label_2] + [repo["name"] for repo in repos]  # gh returns {"name": ...}
+            
+            # Pre-select repositories already in the config
+            current_repos = current_config.get("repositories", [])
+            existing_names = [os.path.basename(os.path.normpath(r)) for r in current_repos]
+            
+            choices = [back_label_2]
+            for repo in repos:
+                name = repo["name"]
+                choices.append(questionary.Choice(
+                    title=name,
+                    checked=name in existing_names
+                ))
 
             ans = questionary.checkbox(
                 "Select repositories to automate:",
-                choices=repo_names,
+                choices=choices,
                 qmark="?",
                 instruction=" ",
                 style=custom_style
@@ -202,14 +219,38 @@ def run_setup():
 
         # ── Step 3: Base folder ───────────────────────────────────────────────
         elif step == 3:
-            ans = input("\nEnter the base folder (example: D:\\Projects) or 'b' to go back: ").strip()
+            # Try to infer base path from existing repos if available
+            default_base = ""
+            current_repos = current_config.get("repositories", [])
+            if current_repos:
+                default_base = os.path.dirname(os.path.normpath(current_repos[0]))
+
+            prompt = f"\nEnter the base folder"
+            if default_base:
+                prompt += f" [default: {default_base}]"
+            prompt += " (example: D:\\Projects) or 'b' to go back: "
+            
+            ans = input(prompt).strip()
+            
             if ans.lower() == 'b':
                 step = 2
                 continue
+            
             if not ans:
-                continue
+                if default_base:
+                    ans = default_base
+                else:
+                    continue
+            
             base_path = ans
-            step = 4  # Proceed to schedule selection
+            
+            # CRITICAL FIX: If we are just updating repos (is_partial), 
+            # we should skip to step 6 (cloning/saving) instead of going 
+            # to step 4 (schedule) which would break without saving.
+            if is_partial:
+                step = 6
+            else:
+                step = 4  # Proceed to schedule selection for full setup
 
         # ── Step 4: Schedule ──────────────────────────────────────────────────
         elif step == 4:
