@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.2.8)
+# 🚀 AutoCommitBot (v1.2.9)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -39,7 +39,9 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
-* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks and much more... Check Below 👇🏻
+* **Execution Reliability** — Built-in retry logic, conflict handling, and network checks
+* **Vibrant CLI Theme** — Rich, colorized output for better commit and repository tracking
+* **Secret Shield** — Now includes visual markers for protected and exposed files
 
 
 <details>
@@ -283,13 +285,14 @@ autocommit version
 
 Example output when up to date:
 ```
-AutoCommitBot  v1.2.8
+AutoCommitBot  v1.2.9
 Checking for updates...
-✔ You are on the latest version (1.2.8).
+✔ You are on the latest version (1.2.9).
 
-🎉 New in this version (v1.2.8):
-  • First-time setup now always shows the full wizard (no menu confusion)
-  • Bundled config.json no longer ships with personal data
+🎉 New in this version (v1.2.9):
+  • Colorized CLI output for clearer commit tracking and Secret Shield logs
+  • Setup wizard now pre-selects existing repos and suggests your base folder
+  • Fixed a bug in the setup flow that prevented repository updates from saving
 ```
 
 Example output when an update is available:
@@ -298,9 +301,10 @@ AutoCommitBot  v1.2.7
 Checking for updates...
 ⚡ New version available: 1.2.8 (you have 1.2.7)
 
-📋 What's New in v1.2.8:
-  • First-time setup now always shows the full wizard (no menu confusion)
-  • Bundled config.json no longer ships with personal data
+📋 What's New in v1.2.9:
+  • Colorized CLI output for clearer commit tracking and Secret Shield logs
+  • Setup wizard now pre-selects existing repos and suggests your base folder
+  • Fixed a bug in the setup flow that prevented repository updates from saving
 
 Run to update:  pip install --upgrade autocommitbot
 ```

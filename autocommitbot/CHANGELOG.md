@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ---
 
 ## [Unreleased]
+- No unreleased changes
+
+## [1.2.9] - 2026-03-21
+
+### Added
+- **Colorized CLI output** — Automated commits, repository scanning, and Secret Shield logs now use a vibrant, multi-color theme for significantly better readability (using the Rich library).
+- **Smart setup defaults** — The setup wizard now automatically pre-selects your currently tracked repositories in the selection menu and suggests your existing base folder as the default path.
+
+### Fixed
+- **Setup flow bug** — Fixed a critical issue where updating repository selections in the configuration menu would exit early after the schedule step without actually saving the new repository list.
+- **Base path inference** — The setup wizard now correctly remembers and suggests your base project folder during partial re-configurations.
+- **Improved repository selection UI** — Existing repositories are now correctly marked as checked in the interactive setup checklist.
 
 ## [1.2.8] - 2026-03-20
 
