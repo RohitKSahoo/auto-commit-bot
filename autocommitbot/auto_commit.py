@@ -191,7 +191,7 @@ def shield_sensitive_data(repo_path):
     
     to_ignore = [f for f in SENSITIVE_FILES if f not in existing_content]
     if to_ignore:
-        console.print(f"[bold blue]🛡️  [SHIELD][/bold blue] [green]SECURED:[/green] Protecting new sensitive patterns: [bold cyan]{', '.join(to_ignore)}[/bold cyan]")
+        console.print(f"[blue][SHIELD][/blue] [green]Secured:[/green] [dim]Protecting new sensitive patterns: {', '.join(to_ignore)}[/dim]")
         with open(gitignore, "a") as f:
             if not existing_content:
                 f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
@@ -219,14 +219,14 @@ def shield_sensitive_data(repo_path):
             cleaned_pattern = s_file.replace("*.", "")
             for t_file in tracked_files:
                 if t_file == s_file or t_file.endswith(cleaned_pattern) or os.path.basename(t_file) == s_file:
-                    console.print(f"[bold blue]🛡️  [SHIELD][/bold blue] [bold red]URGENT:[/bold red] '[cyan]{t_file}[/cyan]' is exposed on GitHub! Un-tracking now...")
+                    console.print(f"[blue][SHIELD][/blue] [bold red]URGENT:[/bold red] '[cyan]{t_file}[/cyan]' was exposed! Un-tracking now...")
                     subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True)
                     needs_untracking = True
         
         if needs_untracking:
             subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
-            console.print("[bold blue]🛡️  [SHIELD][/bold blue] [bold green]✔ Exposed files have been removed from Git tracking.[/bold green]")
-            console.print("[bold blue]🛡️  [SHIELD][/bold blue] [dim]They will disappear from GitHub on your next push.[/dim]")
+            console.print("[blue][SHIELD][/blue] [green]✔ Exposed files removed from Git tracking.[/green]")
+            console.print("[blue][SHIELD][/blue] [dim]They will disappear from remote on your next push.[/dim]")
 
     except Exception as e:
         console.print(f"[bold red][SHIELD ERROR] Audit failed:[/bold red] {e}")
@@ -244,8 +244,8 @@ def shield_sensitive_data(repo_path):
         ).stdout
         for pattern in SENSITIVE_PATTERNS:
             if re.search(pattern, diff):
-                console.print("[bold blue]🛡️  [SHIELD][/bold blue] [bold yellow]WARNING:[/bold yellow] [red]I detected an API Key pattern inside one of your files![/red]")
-                console.print("[bold blue]🛡️  [SHIELD][/bold blue] [dim]I'm pushing this commit, but you should move that key to a .env file ASAP![/dim]")
+                console.print("[blue][SHIELD][/blue] [yellow]Warning:[/yellow] [red]API Key detected in staged changes![/red]")
+                console.print("[blue][SHIELD][/blue] [dim]Pushing anyway, but please move secrets to .env ASAP.[/dim]")
     except Exception:
         pass
     
@@ -385,9 +385,9 @@ def run_bot(force_run=False):
             repos_with_changes.append(path)
 
     if repos_with_changes:
-        console.print(f"\n[bold green]✔ Found uncommitted changes in {len(repos_with_changes)} repositories.[/bold green]")
+        console.print(f"\n[bold green]Found changes in {len(repos_with_changes)} repositories.[/bold green]")
         for repo_path in repos_with_changes:
-            console.print(f"\n[bold yellow]Committing changes for:[/bold yellow] [cyan]{repo_path}[/cyan]")
+            console.print(f"\n[cyan]>> Committing changes for:[/cyan] [bold]{repo_path}[/bold]")
             
             # Take physical backup of files before they get committed by bot
             console.print(f"[dim]Creating snapshot...[/dim]")
@@ -410,7 +410,7 @@ def run_bot(force_run=False):
             
             commit_message = generate_ai_commit_message(repo_path, fallback_commit_message, config)
             
-            console.print(f"[bold magenta]Commit message:[/bold magenta] {commit_message}")
+            console.print(f"[magenta]Commit message:[/magenta] {commit_message}")
             
             commit_process = subprocess.run(
                 ["git", "commit", "-m", commit_message],
@@ -426,10 +426,10 @@ def run_bot(force_run=False):
             push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
             
             if push_process.returncode == 0:
-                console.print("[bold green]✔ Commit pushed successfully.[/bold green]")
+                console.print("[green]✔ Pushed successfully.[/green]")
                 log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
             else:
-                console.print("[bold yellow]Push failed. Attempting to pull remote changes and retry...[/bold yellow]")
+                console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
                 pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
                 if pull_process.returncode == 0:
                     retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
@@ -462,10 +462,10 @@ def run_bot(force_run=False):
             except Exception:
                 pass
 
-        console.print("\n[bold yellow]No user changes found. Performing a random activity commit.[/bold yellow]")
+        console.print("\n[yellow]No user changes. Performing random activity commit.[/yellow]")
         repo_path = random.choice(repos)
 
-        console.print(f"[bold yellow]Selected repository:[/bold yellow] [cyan]{repo_path}[/cyan]")
+        console.print(f"[cyan]>> Selected repository:[/cyan] [bold]{repo_path}[/bold]")
 
         git_folder = os.path.join(repo_path, ".git")
 
@@ -486,7 +486,7 @@ def run_bot(force_run=False):
 
         commit_message = f"{commit_message} | {timestamp}"
 
-        console.print(f"[bold magenta]Commit message:[/bold magenta] {commit_message}")
+        console.print(f"[magenta]Commit message:[/magenta] {commit_message}")
 
         add_process = subprocess.run(
             ["git", "add", SAFE_FILE], 
@@ -512,10 +512,10 @@ def run_bot(force_run=False):
         push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
 
         if push_process.returncode == 0:
-            console.print("[bold green]✔ Commit pushed successfully.[/bold green]")
+            console.print("[green]✔ Pushed successfully.[/green]")
             log_commit(repo_path, commit_message, is_random=True, snapshot_file=snapshot_file)
         else:
-            console.print("[bold yellow]Push failed. Attempting to pull remote changes and retry...[/bold yellow]")
+            console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
             pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
             if pull_process.returncode == 0:
                 retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)

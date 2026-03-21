@@ -40,8 +40,8 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
 * **Execution Reliability** — Built-in retry logic, conflict handling, and network checks
-* **Vibrant CLI Theme** — Rich, colorized output for better commit and repository tracking
-* **Secret Shield** — Now includes visual markers for protected and exposed files
+* **Decent CLI Theme** — Clean, professional, and subtle color-coded output for repository tracking
+* **Secret Shield** — Now includes refined visual markers for protected and exposed files
 
 
 <details>
@@ -290,7 +290,7 @@ Checking for updates...
 ✔ You are on the latest version (1.2.9).
 
 🎉 New in this version (v1.2.9):
-  • Colorized CLI output for clearer commit tracking and Secret Shield logs
+  • Refined, easier-on-the-eyes color theme for better commit and security tracking
   • Setup wizard now pre-selects existing repos and suggests your base folder
   • Fixed a bug in the setup flow that prevented repository updates from saving
 ```
@@ -302,7 +302,7 @@ Checking for updates...
 ⚡ New version available: 1.2.8 (you have 1.2.7)
 
 📋 What's New in v1.2.9:
-  • Colorized CLI output for clearer commit tracking and Secret Shield logs
+  • Refined, easier-on-the-eyes color theme for better commit and security tracking
   • Setup wizard now pre-selects existing repos and suggests your base folder
   • Fixed a bug in the setup flow that prevented repository updates from saving
 
