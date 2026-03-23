@@ -159,6 +159,21 @@ commit_messages = [
 ]
 
 
+def get_daily_commit_count():
+    try:
+        if not os.path.exists(HISTORY_FILE):
+            return 0
+        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        with open(HISTORY_FILE, "r") as f:
+            hist = json.load(f)
+        return sum(
+            1 for entry in hist
+            if entry.get("timestamp", "").startswith(today_str)
+        )
+    except Exception:
+        return 0
+
+
 def internet_available():
     try:
         socket.create_connection(("8.8.8.8", 53), timeout=5)

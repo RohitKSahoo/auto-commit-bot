@@ -104,12 +104,6 @@ def create_startup_task():
             f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings $settings;"
         ]
 
-        if schedule_type == "onlogon":
-            print("Configuring task to repeat every 1 hour while you are logged in.")
-            ps_parts.append(f"$trigger = Get-ScheduledTask -TaskName '{TASK_NAME}' | Select-Object -ExpandProperty Triggers;")
-            ps_parts.append(f"$trigger.RepetitionInterval = (New-TimeSpan -Hours 1);")
-            ps_parts.append(f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Trigger $trigger;")
-
         ps_script = " ".join(ps_parts)
         ps_cmd = ["powershell", "-NoProfile", "-Command", ps_script]
         
