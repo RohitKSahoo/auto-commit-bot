@@ -57,8 +57,9 @@ def create_startup_task():
         return
 
     python_path = sys.executable
-    # The command needs to run the auto_commit module
-    command = f'"{python_path}" -m autocommitbot.auto_commit'
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # The command needs to run the auto_commit module from the project root
+    command = f'cmd.exe /c "cd /d {project_root} && {python_path} -m autocommitbot.auto_commit"'
 
     schedule_type, schedule_time = get_schedule_settings()
 
