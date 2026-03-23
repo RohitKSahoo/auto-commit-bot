@@ -23,6 +23,9 @@ SAFE_FILE = ".dev_activity_log"
 HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 LOG_FILE = os.path.join(BASE_DIR, "bot.log")
 
+# Global timeout for any git command to prevent background hangs
+GIT_TIMEOUT = 90  # seconds
+
 
 def log_to_file(message):
     try:
@@ -64,8 +67,8 @@ def cleanup_expired_snapshots():
 
 def take_snapshot(repo_path):
     try:
-        tracked = subprocess.run(["git", "ls-files"], cwd=repo_path, capture_output=True, text=True, stdin=subprocess.DEVNULL)
-        untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=repo_path, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        tracked = subprocess.run(["git", "ls-files"], cwd=repo_path, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+        untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=repo_path, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
         
         all_files = tracked.stdout.splitlines() + untracked.stdout.splitlines()
         
@@ -234,11 +237,11 @@ def shield_sensitive_data(repo_path):
             for t_file in tracked_files:
                 if t_file == s_file or t_file.endswith(cleaned_pattern) or os.path.basename(t_file) == s_file:
                     console.print(f"[blue][SHIELD][/blue] [bold red]URGENT:[/bold red] '[cyan]{t_file}[/cyan]' was exposed! Un-tracking now...")
-                    subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True)
+                    subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
                     needs_untracking = True
         
         if needs_untracking:
-            subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
+            subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
             console.print("[blue][SHIELD][/blue] [green]✔ Exposed files removed from Git tracking.[/green]")
             console.print("[blue][SHIELD][/blue] [dim]They will disappear from remote on your next push.[/dim]")
 
@@ -277,7 +280,8 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
             capture_output=True,
             text=True,
             encoding='utf-8',
-            errors='ignore'
+            errors='ignore',
+            timeout=GIT_TIMEOUT
         )
         diff_text = diff_process.stdout.strip()
         
@@ -398,7 +402,8 @@ def run_bot(force_run=False):
                 text=True,
                 encoding='utf-8',
                 errors='ignore',
-                stdin=subprocess.DEVNULL
+                stdin=subprocess.DEVNULL,
+                timeout=GIT_TIMEOUT
             )
             if result.stdout.strip():
                 repos_with_changes.append(path)
@@ -422,7 +427,8 @@ def run_bot(force_run=False):
                 ["git", "add", "."], 
                 capture_output=True, 
                 text=True, 
-                stdin=subprocess.DEVNULL
+                stdin=subprocess.DEVNULL,
+                timeout=GIT_TIMEOUT
             )
             if add_process.returncode != 0:
                 console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
@@ -439,14 +445,15 @@ def run_bot(force_run=False):
                 ["git", "commit", "-m", commit_message],
                 capture_output=True,
                 text=True,
-                stdin=subprocess.DEVNULL
+                stdin=subprocess.DEVNULL,
+                timeout=GIT_TIMEOUT
             )
             
             if "nothing to commit" in commit_process.stdout.lower():
                 console.print("[yellow]Nothing new to commit.[/yellow]")
                 continue
                 
-            push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
             
             if push_process.returncode == 0:
                 log_to_file(f"Successfully pushed changes for {repo_path}")
@@ -455,9 +462,9 @@ def run_bot(force_run=False):
             else:
                 log_to_file(f"Push failed for {repo_path}. Attempting pull/push.")
                 console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
-                pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+                pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
                 if pull_process.returncode == 0:
-                    retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+                    retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
                     if retry_push.returncode == 0:
                         log_to_file(f"Successfully pulled and pushed for {repo_path}")
                         console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")
@@ -523,7 +530,8 @@ def run_bot(force_run=False):
             ["git", "add", SAFE_FILE], 
             capture_output=True, 
             text=True, 
-            stdin=subprocess.DEVNULL
+            stdin=subprocess.DEVNULL,
+            timeout=GIT_TIMEOUT
         )
         if add_process.returncode != 0:
             log_to_file(f"Git add failed for random activity in {repo_path}")
@@ -534,7 +542,8 @@ def run_bot(force_run=False):
             ["git", "commit", "-m", commit_message],
             capture_output=True,
             text=True,
-            stdin=subprocess.DEVNULL
+            stdin=subprocess.DEVNULL,
+            timeout=GIT_TIMEOUT
         )
 
         if "nothing to commit" in commit_process.stdout.lower():
@@ -542,7 +551,7 @@ def run_bot(force_run=False):
             console.print("[yellow]Nothing new to commit.[/yellow]")
             return
 
-        push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
 
         if push_process.returncode == 0:
             log_to_file(f"Successfully pushed random activity for {repo_path}")
@@ -551,9 +560,9 @@ def run_bot(force_run=False):
         else:
             log_to_file(f"Random activity push failed for {repo_path}. Attempting pull/push.")
             console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
-            pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
             if pull_process.returncode == 0:
-                retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+                retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
                 if retry_push.returncode == 0:
                     log_to_file(f"Successfully pulled and pushed (random activity) for {repo_path}")
                     console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")

@@ -58,14 +58,21 @@ def create_startup_task():
 
     python_path = sys.executable
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # The command needs to run the auto_commit module from the project root
-    command = f'cmd.exe /c "cd /d {project_root} && {python_path} -m autocommitbot.auto_commit"'
+    
+    # We wrap paths in double quotes to handle spaces and drive letters correctly.
+    # We also add a small timeout/retry to the 'cd' to ensure secondary drives (like D:) are ready.
+    command = (
+        f'cmd.exe /c "'
+        f'timeout /t 5 >nul & '
+        f'cd /d \\"{project_root}\\" && \\"{python_path}\\" -m autocommitbot.auto_commit'
+        f'"'
+    )
 
     schedule_type, schedule_time = get_schedule_settings()
 
-    print("Creating Task Scheduler task: AutoCommitBot...")
+    print(f"Creating Task Scheduler task: {TASK_NAME} ({schedule_type})...")
 
-    # schtasks command to create a task with highest privileges
+    # schtasks command to create a basic task with highest privileges
     schtasks_cmd = [
         "schtasks", "/Create",
         "/TN", TASK_NAME,
@@ -88,19 +95,27 @@ def create_startup_task():
         subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
         print("Startup task scheduled successfully via Task Scheduler.")
         
-        print("Configuring task to run on battery power...")
+        # --- ENHANCEMENT: Configure Repetition & Battery ---
+        # We use PowerShell to add 'Repetition' to ONLOGON tasks because schtasks command-line 
+        # doesn't support it directly. This makes 'Logon' tasks run every hour after login.
+        
+        repetition_ps = ""
+        if schedule_type == "onlogon":
+            repetition_ps = "-RepetitionInterval (New-TimeSpan -Hours 1)"
+            print("Configuring task to repeat every 1 hour while you are logged in.")
+
         ps_script = (
             f"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries "
-            f"-DontStopIfGoingOnBatteries; "
+            f"-DontStopIfGoingOnBatteries {repetition_ps}; "
             f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings $settings"
         )
         ps_cmd = ["powershell", "-NoProfile", "-Command", ps_script]
         
         try:
             subprocess.run(ps_cmd, capture_output=True, text=True, check=True)
-            print("Task configured to run even when on battery power.")
+            print("Task configured for repetition and battery power.")
         except subprocess.CalledProcessError as e:
-            print("Warning: Could not configure the task to run on battery power:")
+            print("Warning: Could not configure repeat/battery settings via PowerShell:")
             print(e.stderr.strip())
 
     except subprocess.CalledProcessError as e:

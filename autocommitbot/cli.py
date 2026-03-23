@@ -173,6 +173,19 @@ def enable():
     create_startup_task()
 
     console.print("[green]Startup task created.[/green]")
+    
+    # Trigger an immediate run in the background so the user sees it working right away
+    console.print("[dim]Triggering initial run in background...[/dim]")
+    try:
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        subprocess.Popen(
+            [sys.executable, "-m", "autocommitbot.auto_commit"],
+            cwd=project_root,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+            start_new_session=True
+        )
+    except Exception:
+        pass
 
 
 
