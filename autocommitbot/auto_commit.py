@@ -413,6 +413,7 @@ def run_bot(force_run=False):
         console.print("[bold red]Configuration file not found.[/bold red]")
         return
 
+    log_to_file("Loading configuration...")
     with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
 
@@ -456,8 +457,10 @@ def run_bot(force_run=False):
     # NOTE: Daily limit for random activity commits is checked later,
     # only in the fallback path. Real user changes always push through.
 
+    log_to_file("Performing snapshot cleanup...")
     cleanup_expired_snapshots()
 
+    log_to_file(f"Starting repository scan loop for {len(repos)} repositories...")
     repos_with_changes = []
 
     for path in repos:
