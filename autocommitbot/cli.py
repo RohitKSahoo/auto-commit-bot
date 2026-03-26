@@ -13,6 +13,7 @@ from importlib.metadata import version as get_version, PackageNotFoundError
 from autocommitbot.setup_repos import run_setup
 from autocommitbot.auto_commit import run_bot
 from autocommitbot.scheduler import create_startup_task, remove_startup_task
+from autocommitbot.paths import CONFIG_FILE, HISTORY_FILE, BACKUP_DIR
 import re
 
 def get_dynamic_version():
@@ -192,19 +193,13 @@ def enable():
 
 @app.command()
 def remove():
-    """Stop tracking a repository — removes it from automation.
-
-    Presents a numbered list of tracked repos and lets you pick one to remove.
-    Does NOT delete the repo's files from disk.
-    """
-    config_path = os.path.join(BASE_DIR, "config.json")
-
-    if not os.path.exists(config_path):
+    """Stop tracking a repository — removes it from automation."""
+    if not os.path.exists(CONFIG_FILE):
         console.print("[red]No configuration found. Run 'autocommit setup' first.[/red]")
         return
 
     try:
-        with open(config_path) as f:
+        with open(CONFIG_FILE) as f:
             config = json.load(f)
 
         repos = config.get("repositories", [])
@@ -234,7 +229,7 @@ def remove():
             removed = repos.pop(index)
 
             config["repositories"] = repos
-            with open(config_path, "w") as f:
+            with open(CONFIG_FILE, "w") as f:
                 json.dump(config, f, indent=4)
 
             console.print(f"[green]Successfully removed:[/green] {removed}")
@@ -267,11 +262,9 @@ def add(path: str = typer.Argument(None, help="Path to the repository (defaults 
         console.print(f"[red]Error: '{target_path}' does not appear to be a Git repository (no .git folder).[/red]")
         return
 
-    config_path = os.path.join(BASE_DIR, "config.json")
-    
     # Load or initialize config
-    if os.path.exists(config_path):
-        with open(config_path, "r") as f:
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
     else:
         # Fallback if someone tries to add before setup
@@ -295,7 +288,7 @@ def add(path: str = typer.Argument(None, help="Path to the repository (defaults 
     repos.append(target_path)
     config["repositories"] = repos
 
-    with open(config_path, "w") as f:
+    with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
 
     console.print(f"[green]✔ Successfully added repo:[/green] {target_path}")
@@ -310,15 +303,12 @@ def add(path: str = typer.Argument(None, help="Path to the repository (defaults 
 @app.command()
 def status():
     """Show all repositories currently being tracked by the bot."""
-
-    config_path = os.path.join(BASE_DIR, "config.json")
-
-    if not os.path.exists(config_path):
+    if not os.path.exists(CONFIG_FILE):
         console.print("[red]No configuration found. Run 'autocommit setup' first.[/red]")
         return
 
     try:
-        with open(config_path) as f:
+        with open(CONFIG_FILE) as f:
             config = json.load(f)
 
         repos = config.get("repositories", [])
@@ -338,20 +328,13 @@ def status():
 
 @app.command()
 def dashboard():
-    """Display a rich table of the last 50 automated commits.
-
-    Shows timestamp, repository name, commit type (User Changes vs Random
-    Activity), and the commit message. Also prints a summary of total
-    commits broken down by type.
-    """
-    history_path = os.path.join(BASE_DIR, "history.json")
-    
-    if not os.path.exists(history_path):
+    """Display a rich table of the last 50 automated commits."""
+    if not os.path.exists(HISTORY_FILE):
         console.print("[yellow]No commit history found yet. The bot hasn't made any commits.[/yellow]")
         return
         
     try:
-        with open(history_path, "r") as f:
+        with open(HISTORY_FILE, "r") as f:
             history = json.load(f)
     except Exception:
         console.print("[red]Failed to read history file.[/red]")
@@ -391,22 +374,16 @@ def dashboard():
 
 @app.command()
 def config_backup(days: int = typer.Argument(..., help="Number of days to keep backup snapshots")):
-    """Set how long pre-commit backup snapshots are kept before auto-deletion.
-
-    Example: autocommit config-backup 14
-    This keeps all snapshots for 14 days, after which they are deleted
-    automatically the next time the bot runs.
-    """
-    config_path = os.path.join(BASE_DIR, "config.json")
+    """Set how long pre-commit backup snapshots are kept."""
     try:
-        with open(config_path, "r") as f:
+        with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         config = {}
         
     config["backup_expiry_days"] = days
     
-    with open(config_path, "w") as f:
+    with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
         
     console.print(f"[green]✔ Successfully updated backups to expire after {days} days.[/green]")
@@ -414,24 +391,15 @@ def config_backup(days: int = typer.Argument(..., help="Number of days to keep b
 
 @app.command()
 def restore():
-    """Roll back a bot commit by restoring a pre-commit file snapshot.
-
-    Lists available backup snapshots (ZIP files saved before each commit).
-    After you pick one, files are restored locally AND a force-push rolls
-    back the remote GitHub repo to that state too.
-    
-    Note: uses 'git push --force' which rewrites remote history.
-    """
-    history_path = os.path.join(BASE_DIR, "history.json")
-    
-    if not os.path.exists(history_path):
+    """Roll back a bot commit by restoring a pre-commit file snapshot."""
+    if not os.path.exists(HISTORY_FILE):
         console.print("[yellow]No commit history found.[/yellow]")
         return
         
-    with open(history_path, "r") as f:
+    with open(HISTORY_FILE, "r") as f:
         history = json.load(f)
         
-    snapshots = [entry for entry in history if "snapshot" in entry and os.path.exists(os.path.join(BASE_DIR, "backups", entry["snapshot"]))]
+    snapshots = [entry for entry in history if "snapshot" in entry and os.path.exists(os.path.join(str(BACKUP_DIR), entry["snapshot"]))]
     
     if not snapshots:
         console.print("[yellow]No physical backup snapshots are currently available to restore.[/yellow]")
@@ -460,10 +428,9 @@ def restore():
             return
             
         selected = snapshots[index]
-        snap_path = os.path.join(BASE_DIR, "backups", selected["snapshot"])
+        snap_path = os.path.join(str(BACKUP_DIR), selected["snapshot"])
         
-        config_path = os.path.join(BASE_DIR, "config.json")
-        with open(config_path, "r") as f:
+        with open(CONFIG_FILE, "r") as f:
             repos = json.load(f).get("repositories", [])
             
         repo_path = next((r for r in repos if os.path.basename(os.path.normpath(r)) == selected["repo"]), None)
@@ -500,21 +467,12 @@ def restore():
 
 @app.command()
 def clear_backups():
-    """Delete all backup snapshots to free disk space.
-
-    Removes every ZIP snapshot stored in the backups folder and clears the
-    corresponding snapshot references from commit history. Commit history
-    entries themselves are preserved — only their snapshot links are removed.
-
-    Useful when backup files are consuming too much disk space.
-    """
-    backup_dir = os.path.join(BASE_DIR, "backups")
-
-    if not os.path.isdir(backup_dir):
+    """Delete all backup snapshots to free disk space."""
+    if not os.path.isdir(str(BACKUP_DIR)):
         console.print("[yellow]No backups directory found. Nothing to clear.[/yellow]")
         return
 
-    zip_files = [f for f in os.listdir(backup_dir) if f.endswith(".zip")]
+    zip_files = [f for f in os.listdir(str(BACKUP_DIR)) if f.endswith(".zip")]
 
     if not zip_files:
         console.print("[yellow]Backups folder is already empty.[/yellow]")
@@ -522,7 +480,7 @@ def clear_backups():
 
     # Calculate total size
     total_bytes = sum(
-        os.path.getsize(os.path.join(backup_dir, f)) for f in zip_files
+        os.path.getsize(os.path.join(str(BACKUP_DIR), f)) for f in zip_files
     )
 
     def _fmt_size(b: int) -> str:
@@ -546,16 +504,15 @@ def clear_backups():
     deleted = 0
     for f in zip_files:
         try:
-            os.remove(os.path.join(backup_dir, f))
+            os.remove(os.path.join(str(BACKUP_DIR), f))
             deleted += 1
         except Exception as e:
             console.print(f"[red]Failed to delete {f}: {e}[/red]")
 
     # Clean snapshot references from history.json
-    history_path = os.path.join(BASE_DIR, "history.json")
-    if os.path.exists(history_path):
+    if os.path.exists(HISTORY_FILE):
         try:
-            with open(history_path, "r") as f:
+            with open(HISTORY_FILE, "r") as f:
                 history = json.load(f)
 
             changed = False
@@ -568,7 +525,7 @@ def clear_backups():
                     changed = True
 
             if changed:
-                with open(history_path, "w") as f:
+                with open(HISTORY_FILE, "w") as f:
                     json.dump(history, f, indent=4)
         except Exception:
             pass

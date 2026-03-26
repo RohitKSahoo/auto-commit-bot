@@ -8,6 +8,7 @@ autocommitbot/changelog.py
 autocommitbot/cli.py
 autocommitbot/commit_messages.py
 autocommitbot/gh_auth.py
+autocommitbot/paths.py
 autocommitbot/scheduler.py
 autocommitbot/setup_repos.py
 autocommitbot.egg-info/PKG-INFO

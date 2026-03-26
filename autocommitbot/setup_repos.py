@@ -8,7 +8,7 @@ import random
 from autocommitbot.scheduler import create_startup_task
 from autocommitbot.gh_auth import require_gh_auth, get_user_repos
 
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
+from autocommitbot.paths import CONFIG_FILE
 
 
 def check_git_installed():

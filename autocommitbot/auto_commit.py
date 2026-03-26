@@ -14,14 +14,9 @@ console = Console()
 
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from autocommitbot.paths import CONFIG_FILE, HISTORY_FILE, LOG_FILE, BACKUP_DIR
 
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 SAFE_FILE = ".dev_activity_log"
-
-
-HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
-LOG_FILE = os.path.join(BASE_DIR, "bot.log")
 
 # Global timeout for any git command to prevent background hangs
 GIT_TIMEOUT = 90  # seconds
@@ -51,7 +46,7 @@ def cleanup_expired_snapshots():
             if "snapshot" in entry and entry.get("expiry"):
                 expiry_dt = datetime.datetime.strptime(entry["expiry"], "%Y-%m-%d %H:%M:%S")
                 if now > expiry_dt:
-                    snap_path = os.path.join(BASE_DIR, "backups", entry["snapshot"])
+                    snap_path = os.path.join(str(BACKUP_DIR), entry["snapshot"])
                     if os.path.exists(snap_path):
                         os.remove(snap_path)
                     del entry["snapshot"]
@@ -79,9 +74,8 @@ def take_snapshot(repo_path):
         snapshot_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         zip_name = f"{repo_name}_{snapshot_id}.zip"
         
-        backup_dir = os.path.join(BASE_DIR, "backups")
-        os.makedirs(backup_dir, exist_ok=True)
-        zip_path = os.path.join(backup_dir, zip_name)
+        os.makedirs(str(BACKUP_DIR), exist_ok=True)
+        zip_path = os.path.join(str(BACKUP_DIR), zip_name)
         
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for file in all_files:
@@ -213,75 +207,105 @@ SENSITIVE_FILES = [
 SENSITIVE_PATTERNS = [r"AIzaSy[A-Za-z0-9_-]{33}", r"sk-[A-Za-z0-9]{48}"]
 
 def shield_sensitive_data(repo_path):
-    """Safety check to prevent pushing secrets and forcefully un-track them if exposed"""
-    # 1. Update .gitignore
-    gitignore = os.path.join(repo_path, ".gitignore")
-    existing_content = ""
-    if os.path.exists(gitignore):
-        with open(gitignore, "r") as f:
-            existing_content = f.read()
-    
-    to_ignore = [f for f in SENSITIVE_FILES if f not in existing_content]
-    if to_ignore:
-        console.print(f"[blue][SHIELD][/blue] [green]Secured:[/green] [dim]Protecting new sensitive patterns: {', '.join(to_ignore)}[/dim]")
-        with open(gitignore, "a") as f:
-            if not existing_content:
-                f.write("\n# AutoCommitBot Secret Shield - Self Healing\n")
-            for item in to_ignore:
-                f.write(f"\n{item}")
+    """Safety check to detect and shield sensitive data.
+    If found, adds to gitignore, untracks from git, and halts the push.
+    """
+    gitignore_path = os.path.join(repo_path, ".gitignore")
+    existing_ignore = ""
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path, "r", encoding="utf-8", errors="ignore") as f:
+            existing_ignore = f.read()
 
-    # 2. PROACTIVE UN-TRACKING: Check if any sensitive file is currently being tracked by Git
-    # This fixes the issue where a file is in .gitignore but still exists in the repo
+    found_secrets = False
+    new_ignores = set()
+
+    # 1. Check for sensitive files being tracked or staged
     try:
-        # Get list of all tracked files
-        tracked_process = subprocess.run(
-            ["git", "ls-files"], 
-            cwd=repo_path, 
-            capture_output=True, 
+        # Get list of all tracked and untracked files
+        files_process = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", "--cached"],
+            cwd=repo_path,
+            capture_output=True,
             text=True,
             encoding='utf-8',
             errors='ignore'
         )
-        tracked_files = tracked_process.stdout.splitlines()
-        
-        needs_untracking = False
-        for s_file in SENSITIVE_FILES:
-            # Check if this sensitive pattern matches any tracked file
-            # (Matches exact filename or wildcards like *.key)
-            cleaned_pattern = s_file.replace("*.", "")
-            for t_file in tracked_files:
-                if t_file == s_file or t_file.endswith(cleaned_pattern) or os.path.basename(t_file) == s_file:
-                    console.print(f"[blue][SHIELD][/blue] [bold red]URGENT:[/bold red] '[cyan]{t_file}[/cyan]' was exposed! Un-tracking now...")
-                    subprocess.run(["git", "rm", "-r", "--cached", t_file], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
-                    needs_untracking = True
-        
-        if needs_untracking:
-            subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
-            console.print("[blue][SHIELD][/blue] [green]✔ Exposed files removed from Git tracking.[/green]")
-            console.print("[blue][SHIELD][/blue] [dim]They will disappear from remote on your next push.[/dim]")
+        all_relevant_files = files_process.stdout.splitlines()
 
-    except Exception as e:
-        console.print(f"[bold red][SHIELD ERROR] Audit failed:[/bold red] {e}")
+        for s_pattern in SENSITIVE_FILES:
+            raw_pattern = s_pattern.replace("*", "")
+            for f_path in all_relevant_files:
+                if s_pattern in f_path or (raw_pattern and f_path.endswith(raw_pattern)):
+                    if s_pattern not in existing_ignore and f_path not in existing_ignore:
+                        new_ignores.add(f_path if "*" not in s_pattern else s_pattern)
+                    
+                    # If this sensitive file is already staged/tracked, it's a risk
+                    found_secrets = True
+                    console.print(f"[blue][SHIELD][/blue] [bold red]RISK:[/bold red] Sensitive file detected: [cyan]{f_path}[/cyan]")
 
-    # 3. Key Scanning (Purely informative if found in tracked files)
+    except Exception:
+        pass
+
+    # 2. Key Scanning in Diffs
     try:
-        # Check staged changes
-        diff = subprocess.run(
-            ["git", "diff", "--cached"], 
+        # Check staged changes for keys
+        diff_process = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"], 
             cwd=repo_path, 
             capture_output=True, 
             text=True, 
             encoding='utf-8', 
             errors='ignore'
-        ).stdout
-        for pattern in SENSITIVE_PATTERNS:
-            if re.search(pattern, diff):
-                console.print("[blue][SHIELD][/blue] [yellow]Warning:[/yellow] [red]API Key detected in staged changes![/red]")
-                console.print("[blue][SHIELD][/blue] [dim]Pushing anyway, but please move secrets to .env ASAP.[/dim]")
+        )
+        changed_files = diff_process.stdout.splitlines()
+
+        for f_path in changed_files:
+            file_diff = subprocess.run(
+                ["git", "diff", "--cached", f_path],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
+            
+            for pattern in SENSITIVE_PATTERNS:
+                if re.search(pattern, file_diff):
+                    console.print(f"[blue][SHIELD][/blue] [bold red]CRITICAL:[/bold red] API Key detected in [cyan]{f_path}[/cyan]")
+                    found_secrets = True
+                    if f_path not in existing_ignore:
+                        new_ignores.add(f_path)
+
     except Exception:
         pass
-    
-    return True # Always continue now as requested
+
+    # 3. Take Action
+    if found_secrets:
+        # Update .gitignore if needed
+        if new_ignores:
+            with open(gitignore_path, "a", encoding="utf-8") as f:
+                if not existing_ignore:
+                    f.write("\n# AutoCommitBot Secret Shield - Automation Rules\n")
+                else:
+                    f.write("\n\n# AutoCommitBot - New Sensitive Files Detected\n")
+                for item in new_ignores:
+                    f.write(f"{item}\n")
+            console.print(f"[blue][SHIELD][/blue] [green]✔ Added {len(new_ignores)} items to .gitignore.[/green]")
+
+        # Try to un-track the files if they are in the index
+        subprocess.run(["git", "rm", "-r", "--cached", "."], cwd=repo_path, capture_output=True)
+        subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
+
+        console.print("\n[bold yellow]⚠ SECRET SHIELD ALERT[/bold yellow]")
+        console.print(f"[white]The bot found sensitive information in repository:[/white] [bold]{repo_path}[/bold]")
+        console.print("[white]1. We have added the suspected files to your [bold].gitignore[/bold].[/white]")
+        console.print("[white]2. We have removed them from Git tracking (they are safe locally).[/white]")
+        console.print("[white]3. [bold]Action Required:[/bold] Please check your staged changes manually.[/white]")
+        console.print("[white]4. If everything is safe, you can push manually or re-run the bot.[/white]\n")
+        
+        return False # HALT this repo only
+
+    return True # SAFE to proceed
 
 def generate_ai_commit_message(repo_path, fallback_message, config):
     if not config.get("use_ai") or not config.get("gemini_key"):
@@ -315,7 +339,15 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
         ]
         
         headers = {"Content-Type": "application/json"}
-        prompt = f"Write a concise, natural, human-like 1-line git commit message for the following changes. Do not use quotes, backticks, or markdown, just the raw text of the message:\n\n{diff_text}"
+        prompt = (
+            "Write a clear and informative git commit message for the following changes.\n"
+            "Format:\n"
+            "1. A concise, one-line summary (under 60 characters).\n"
+            "2. A blank line.\n"
+            "3. A bulleted list explaining exactly what was changed and added.\n"
+            "Do NOT use markdown headers, backticks, or code blocks. Use plain text only.\n\n"
+            f"{diff_text}"
+        )
         payload = {"contents": [{"parts": [{"text": prompt}]}]}
         
         success = False
@@ -332,17 +364,26 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
                 elif response.status_code == 404:
                     continue # Try next model
                 else:
-                    # Other error (like 429 rate limit or 401), stop and use fallback
                     break
             except Exception:
                 continue
         
         if success and data:
             try:
-                message = data['candidates'][0]['content']['parts'][0]['text'].strip()
-                message = message.strip('"').strip("'").split('\n')[0]
-                if message:
-                    return f"{message} | {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                # Extract the full multiline message from AI response
+                raw_message = data['candidates'][0]['content']['parts'][0]['text'].strip()
+                
+                # Sanitize: Remove leading/trailing quotes and markdown code fences if AI added them
+                clean_message = raw_message.strip('"').strip("'")
+                if clean_message.startswith("```"):
+                   clean_message = re.sub(r"```(text|plaintext|git)?\s*", "", clean_message)
+                   clean_message = clean_message.replace("```", "")
+                
+                if clean_message:
+                    # Append timestamp and automated tag as a footer
+                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    footer = f"\n\n---\n[Auto-Generated-By: AutoCommitBot | {timestamp}]"
+                    return clean_message.strip() + footer
             except (KeyError, IndexError):
                 pass
     except Exception:
@@ -380,10 +421,13 @@ def run_bot(force_run=False):
                 if hist:
                     last_commit_dt = datetime.datetime.strptime(hist[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
                     hours_since = (datetime.datetime.now() - last_commit_dt).total_seconds() / 3600.0
+                else:
+                    # History exists but is empty
+                    hours_since = 999.0
                     
-                    if hours_since < 12:
-                        console.print(f"[dim]Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.[/dim]")
-                        return
+                if hours_since < 12:
+                    console.print(f"[dim]Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.[/dim]")
+                    return
                 elif hours_since < 48:
                     if random.random() > 0.10:
                         console.print("[dim]Natural Activity Mode: Skipped this hour to simulate natural gaps (10% execution chance).[/dim]")
@@ -391,7 +435,11 @@ def run_bot(force_run=False):
                     console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Random trigger unexpectedly hit after {int(hours_since)} hours![/yellow]")
                 else:
                     console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Enforcing commit since it's been {int(hours_since)} hours to prevent gaps.[/yellow]")
-        except Exception:
+            else:
+                # No history file yet
+                console.print("[bold cyan]Natural Activity Mode:[/bold cyan] [dim]No history found. Proceeding with first commit.[/dim]")
+        except Exception as e:
+            console.print(f"[dim]Natural Activity Mode Error (Check history.json): {e}[/dim]")
             pass
 
     # NOTE: Daily limit for random activity commits is checked later,
@@ -409,7 +457,9 @@ def run_bot(force_run=False):
 
             # --- SAFETY FIRST: Run Secret Shield BEFORE anything else ---
             # This ensures we fix vulnerabilities even if there are no code changes
-            shield_sensitive_data(path)
+            if not shield_sensitive_data(path):
+                console.print(f"[bold red]Skipping {path} due to security risk (API Key detected).[/bold red]")
+                continue
 
             result = subprocess.run(
                 ["git", "-C", path, "status", "--porcelain"],

@@ -3,6 +3,7 @@ import os
 import sys
 import ctypes
 import subprocess
+from autocommitbot.paths import CONFIG_FILE
 
 TASK_NAME = "AutoCommitBot"
 
@@ -39,11 +40,9 @@ def request_admin_and_exit():
 
 
 def get_schedule_settings():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(base_dir, "config.json")
     try:
-        if os.path.exists(config_path):
-            with open(config_path, "r") as f:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "r") as f:
                 c = json.load(f)
                 return c.get("schedule_type", "onlogon"), c.get("schedule_time", None)
     except Exception:

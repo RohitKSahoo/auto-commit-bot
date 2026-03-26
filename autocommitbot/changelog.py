@@ -12,7 +12,9 @@ import re
 
 # CHANGELOG.md is bundled inside the package directory so it's available
 # both during development and after `pip install`.
-_CHANGELOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "CHANGELOG.md")
+from autocommitbot.paths import CHANGELOG_PATH
+
+_CHANGELOG_PATH = str(CHANGELOG_PATH)
 
 
 def _parse_changelog() -> dict[str, list[str]]:
