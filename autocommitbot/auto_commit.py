@@ -8,9 +8,11 @@ import random
 import zipfile
 import requests
 import re
+import sys
 from rich.console import Console
 
-console = Console()
+# Force UTF-8 and terminal colors even when redirected to capture logs better
+console = Console(force_terminal=True) if not sys.stdout.isatty() else Console()
 
 
 

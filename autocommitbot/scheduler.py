@@ -62,10 +62,10 @@ def create_startup_task():
     error_log = os.path.join(os.path.expanduser("~"), ".autocommitbot", "bot_error.log")
 
     # We use PowerShell for the task command because it handles spaces and drive letters much better than cmd.exe
-    # SHORTENED: We use PowerShell aliases (-nop, -w h, -c) to stay under the string limit
+    # Added $env:PYTHONUTF8=1 to handle Unicode (like checkmarks) in redirected output
     ps_task_cmd = (
         f"powershell -nop -w h -c "
-        f"\"sleep 10; cd '{project_root}'; "
+        f"\"$env:PYTHONUTF8=1; sleep 10; cd '{project_root}'; "
         f"& '{python_path}' -m autocommitbot.auto_commit >> '{error_log}' 2>&1\""
     )
 
