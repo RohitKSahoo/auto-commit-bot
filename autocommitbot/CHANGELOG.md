@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.3.0] - 2026-03-26
+
+### Fixed
+- **Background Task Reliability** — Fixed a major issue where the bot would hang indefinitely in the Windows Task Scheduler due to stdout buffer overflows. All output is now correctly redirected to log files.
+- **Git Command Timeouts** — Added global 90-second timeouts to all Git operations (status, add, commit, push, pull) to prevent background process hangs.
+- **Encoding & Unicode Support** — Fixed a "charmap" crash on Windows by forcing UTF-8 mode for both Python and the Rich console. Unicode checkmarks (✔) now log correctly in background mode.
+- **Task Scheduler Path Limits** — Shortened the registration command using PowerShell aliases (`-nop -w h -c`) to stay within the legacy 261-character `schtasks` limit.
+
+### Optimized
+- **Secret Shield Performance** — Drastically reduced execution time by scanning all staged changes in a single operation instead of running individual diffs per file.
+
+### Added
+- **Detailed Execution Tracing** — Added granular logging for configuration loading, repository loops, and background maintenance steps to make troubleshooting easier.
+
 ## [1.2.9] - 2026-03-21
 
 ### Added
@@ -20,8 +34,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Setup flow bug** — Fixed a critical issue where updating repository selections in the configuration menu would exit early after the schedule step without actually saving the new repository list.
 - **Base path inference** — The setup wizard now correctly remembers and suggests your base project folder during partial re-configurations.
 - **Improved repository selection UI** — Existing repositories are now correctly marked as checked in the interactive setup checklist.
-
-## [1.2.8] - 2026-03-20
 
 ### Fixed
 - First-time users no longer see the returning-user menu — setup now correctly detects a "configured" state by checking for a non-empty `repositories` list in `config.json`, not just whether the file exists

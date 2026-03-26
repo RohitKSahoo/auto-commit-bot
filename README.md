@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.2.9)
+# 🚀 AutoCommitBot (v1.3.0)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -285,14 +285,16 @@ autocommit version
 
 Example output when up to date:
 ```
-AutoCommitBot  v1.2.9
+AutoCommitBot  v1.3.0
 Checking for updates...
-✔ You are on the latest version (1.2.9).
+✔ You are on the latest version (1.3.0).
 
-🎉 New in this version (v1.2.9):
-  • Refined, easier-on-the-eyes color theme for better commit and security tracking
-  • Setup wizard now pre-selects existing repos and suggests your base folder
-  • Fixed a bug in the setup flow that prevented repository updates from saving
+🎉 New in this version (v1.3.0):
+  • Fixed background hangs in Task Scheduler by redirecting output to logs
+  • Added global timeouts to all Git operations to prevent indefinite stalls
+  • Fixed encoding crashes on Windows (UTF-8 support for log files)
+  • Optimized Secret Shield performance for faster repository scanning
+  • Shortened scheduler commands to fit within Windows path limits
 ```
 
 Example output when an update is available:
