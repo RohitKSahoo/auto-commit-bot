@@ -50,7 +50,7 @@ def get_schedule_settings():
     return "onlogon", None
 
 def create_startup_task():
-    """Create a Windows Task Scheduler task."""
+    """Create a Windows Task Scheduler task using PowerShell for robust path handling."""
     if not is_admin():
         request_admin_and_exit()
         return
@@ -58,13 +58,15 @@ def create_startup_task():
     python_path = sys.executable
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # We wrap paths in double quotes to handle spaces and drive letters correctly.
-    # We also add a small timeout/retry to the 'cd' to ensure secondary drives (like D:) are ready.
-    command = (
-        f'cmd.exe /c "'
-        f'timeout /t 5 >nul & '
-        f'cd /d \\"{project_root}\\" && \\"{python_path}\\" -m autocommitbot.auto_commit'
-        f'"'
+    # NEW LOG: We redirect stderr to a separate file so users can see startup crashes (e.g., ModuleNotFoundError)
+    error_log = os.path.join(os.path.expanduser("~"), ".autocommitbot", "bot_error.log")
+
+    # We use PowerShell for the task command because it handles spaces and drive letters much better than cmd.exe
+    # We also add a delay to ensure network and drives are ready
+    ps_task_cmd = (
+        f"powershell.exe -NoProfile -WindowStyle Hidden -Command "
+        f"\"Start-Sleep -s 10; cd '{project_root}'; "
+        f"& '{python_path}' -m autocommitbot.auto_commit 2>> '{error_log}'\""
     )
 
     schedule_type, schedule_time = get_schedule_settings()
@@ -75,7 +77,7 @@ def create_startup_task():
     schtasks_cmd = [
         "schtasks", "/Create",
         "/TN", TASK_NAME,
-        "/TR", command,
+        "/TR", ps_task_cmd,
         "/RL", "HIGHEST",
         "/F"
     ]
@@ -85,33 +87,18 @@ def create_startup_task():
         print(f"Scheduling to run daily at: {schedule_time}")
     elif schedule_type == "random_day_time":
         schtasks_cmd.extend(["/SC", "MINUTE", "/MO", "60"])
-        print("Scheduling to run periodically in the background (will organically vary commits).")
+        print("Scheduling to run periodically in the background.")
     else:
         schtasks_cmd.extend(["/SC", "ONLOGON"])
         print("Scheduling to run on Logon.")
 
     try:
         subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
-        print("Startup task scheduled successfully via Task Scheduler.")
+        print("Startup task scheduled successfully.")
         
-        # --- ENHANCEMENT: Configure Repetition & Battery ---
-        # We use PowerShell to add 'Repetition' to ONLOGON tasks because schtasks command-line 
-        # doesn't support it directly. This makes 'Logon' tasks run every hour after login.
-        
-        ps_parts = [
-            f"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries;",
-            f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings $settings;"
-        ]
-
-        ps_script = " ".join(ps_parts)
-        ps_cmd = ["powershell", "-NoProfile", "-Command", ps_script]
-        
-        try:
-            subprocess.run(ps_cmd, capture_output=True, text=True, check=True)
-            print("Task configured for repetition and battery power.")
-        except subprocess.CalledProcessError as e:
-            print("Warning: Could not configure repeat/battery settings via PowerShell:")
-            print(e.stderr.strip())
+        # Configure battery settings via PowerShell
+        ps_settings = f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)"
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_settings], capture_output=True, text=True)
 
     except subprocess.CalledProcessError as e:
         print("Failed to create scheduled task:")

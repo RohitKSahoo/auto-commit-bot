@@ -642,4 +642,10 @@ def run_bot(force_run=False):
                 console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
 
 if __name__ == "__main__":
-    run_bot()
+    try:
+        run_bot()
+    except Exception as e:
+        import traceback
+        log_to_file(f"CRITICAL CRASH: {e}")
+        log_to_file(traceback.format_exc())
+        print(f"CRITICAL ERROR: {e}")
