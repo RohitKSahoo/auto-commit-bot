@@ -228,7 +228,8 @@ def shield_sensitive_data(repo_path):
             capture_output=True,
             text=True,
             encoding='utf-8',
-            errors='ignore'
+            errors='ignore',
+            timeout=GIT_TIMEOUT
         )
         all_relevant_files = files_process.stdout.splitlines()
 
@@ -248,33 +249,43 @@ def shield_sensitive_data(repo_path):
 
     # 2. Key Scanning in Diffs
     try:
-        # Check staged changes for keys
+        # Get all staged changes at once rather than per-file for performance
         diff_process = subprocess.run(
-            ["git", "diff", "--cached", "--name-only"], 
+            ["git", "diff", "--cached"], 
             cwd=repo_path, 
             capture_output=True, 
             text=True, 
             encoding='utf-8', 
-            errors='ignore'
+            errors='ignore',
+            timeout=GIT_TIMEOUT
         )
-        changed_files = diff_process.stdout.splitlines()
-
+        all_diffs = diff_process.stdout
+        
+        # Check the entire diff for patterns
+        for pattern in SENSITIVE_PATTERNS:
+            if re.search(pattern, all_diffs):
+                console.print(f"[blue][SHIELD][/blue] [bold red]CRITICAL:[/bold red] API Key detected in staged changes!")
+                found_secrets = True
+                
+        # Also check for sensitive filenames in staged file list
+        staged_files_process = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='ignore',
+            timeout=GIT_TIMEOUT
+        )
+        changed_files = staged_files_process.stdout.splitlines()
+        
         for f_path in changed_files:
-            file_diff = subprocess.run(
-                ["git", "diff", "--cached", f_path],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='ignore'
-            ).stdout
-            
-            for pattern in SENSITIVE_PATTERNS:
-                if re.search(pattern, file_diff):
-                    console.print(f"[blue][SHIELD][/blue] [bold red]CRITICAL:[/bold red] API Key detected in [cyan]{f_path}[/cyan]")
+            for s_pattern in SENSITIVE_FILES:
+                raw_pattern = s_pattern.replace("*", "")
+                if s_pattern in f_path or (raw_pattern and f_path.endswith(raw_pattern)):
+                    if s_pattern not in existing_ignore:
+                        new_ignores.add(f_path if "*" not in s_pattern else s_pattern)
                     found_secrets = True
-                    if f_path not in existing_ignore:
-                        new_ignores.add(f_path)
 
     except Exception:
         pass
@@ -293,8 +304,8 @@ def shield_sensitive_data(repo_path):
             console.print(f"[blue][SHIELD][/blue] [green]✔ Added {len(new_ignores)} items to .gitignore.[/green]")
 
         # Try to un-track the files if they are in the index
-        subprocess.run(["git", "rm", "-r", "--cached", "."], cwd=repo_path, capture_output=True)
-        subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True)
+        subprocess.run(["git", "rm", "-r", "--cached", "."], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
+        subprocess.run(["git", "add", ".gitignore"], cwd=repo_path, capture_output=True, timeout=GIT_TIMEOUT)
 
         console.print("\n[bold yellow]⚠ SECRET SHIELD ALERT[/bold yellow]")
         console.print(f"[white]The bot found sensitive information in repository:[/white] [bold]{repo_path}[/bold]")
@@ -455,9 +466,13 @@ def run_bot(force_run=False):
             if not os.path.isdir(git_folder):
                 continue
 
+            # Track which repo we are looking at to detect hangs
+            log_to_file(f"Scanning for changes: {path}")
+            
             # --- SAFETY FIRST: Run Secret Shield BEFORE anything else ---
             # This ensures we fix vulnerabilities even if there are no code changes
             if not shield_sensitive_data(path):
+                log_to_file(f"Skipping {path} due to security risk.")
                 console.print(f"[bold red]Skipping {path} due to security risk (API Key detected).[/bold red]")
                 continue
 
@@ -538,7 +553,7 @@ def run_bot(force_run=False):
                         log_to_file(f"Retry push failed for {repo_path}: {retry_push.stderr.strip()}")
                         console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
                 else:
-                    subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL)
+                    subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
                     log_to_file(f"Pull failed for {repo_path}: {pull_process.stderr.strip()}")
                     console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
                     console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
@@ -636,7 +651,7 @@ def run_bot(force_run=False):
                     log_to_file(f"Random activity retry push failed for {repo_path}: {retry_push.stderr.strip()}")
                     console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
             else:
-                subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL)
+                subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
                 log_to_file(f"Random activity pull failed for {repo_path}: {pull_process.stderr.strip()}")
                 console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
                 console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
