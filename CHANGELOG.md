@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.3.1] - 2026-04-11
+
+### Added
+- **Interactive Manual Runs** — Added a new interactive menu when running `autocommit run` manually. Users can now choose between scanning for real code changes or performing a quick "Heartbeat" commit.
+- **Strict Background Mode** — The background task (Windows Task Scheduler) now strictly performs "Random Activity" commits only, ignoring real code changes to prevent cluttered or poorly messaged automated commits in the background.
+- **Improved CLI Experience** — Integrated `questionary` into the main execution flow for a more premium interactive experience.
+
 ## [1.3.0] - 2026-03-26
 
 ### Fixed

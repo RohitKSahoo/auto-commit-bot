@@ -122,21 +122,44 @@ def setup():
 
 @app.command()
 def run():
-    """Scan all tracked repos and commit any pending changes immediately.
+    """Scan and commit changes or perform a harmless heartbeat commit.
 
-    Stages, commits, and pushes changes in all tracked repositories right now.
-    Skips the schedule — useful for testing or forcing an immediate commit.
-    Also available as: autocommit start
+    Shows an interactive menu to choose between committing your real work
+    or forcing a 'Random Activity' commit to GitHub.
     """
-    console.print("[green]Starting auto commit bot...[/green]")
-    run_bot(force_run=True)
+    import questionary
+    
+    style = questionary.Style([
+        ('qmark', 'fg:#00ffff bold'),
+        ('question', 'bold'),
+        ('selected', 'fg:#00ff00 bold'),
+        ('pointer', 'fg:#00ffff bold'),
+        ('highlighted', 'fg:#00ffff bold'),
+        ('answer', 'fg:#00ff00 bold'),
+    ])
+
+    choice = questionary.select(
+        "How would you like the bot to proceed?",
+        choices=[
+            questionary.Choice(title="🚀 Scan & Commit my real changes", value="user"),
+            questionary.Choice(title="⚡ Perform a harmless 'Heartbeat' commit", value="random"),
+            questionary.Choice(title="❌ Cancel", value="cancel"),
+        ],
+        style=style
+    ).ask()
+
+    if not choice or choice == "cancel":
+        console.print("[yellow]Operation cancelled.[/yellow]")
+        return
+
+    console.print(f"[green]Starting bot in {choice} mode...[/green]")
+    run_bot(force_run=True, manual_mode=choice)
 
 
 @app.command()
 def start():
-    """Alias for 'run' — commit & push all tracked repos immediately."""
-    console.print("[green]Running bot manually...[/green]")
-    run_bot(force_run=True)
+    """Alias for 'run' — choose commit mode manually."""
+    run()
 
 
 @app.command()

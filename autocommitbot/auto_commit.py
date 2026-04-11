@@ -404,8 +404,16 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
         
     return fallback_message
 
-def run_bot(force_run=False):
-    log_to_file(f"Bot execution started (force_run={force_run})")
+def run_bot(force_run=False, manual_mode=None):
+    """
+    Main bot execution logic.
+    
+    manual_mode options:
+    - None: System chooses based on force_run (Default for background).
+    - 'user': Explicitly scan and commit user changes.
+    - 'random': Explicitly perform a random activity commit.
+    """
+    log_to_file(f"Bot execution started (force_run={force_run}, manual_mode={manual_mode})")
     
     if not wait_for_internet():
         return
@@ -425,241 +433,179 @@ def run_bot(force_run=False):
         log_to_file("No repositories configured.")
         console.print("[bold red]No repositories configured.[/bold red]")
         return
-        
-    if not force_run and config.get("schedule_type") == "random_day_time":
-        try:
-            if os.path.exists(HISTORY_FILE):
-                with open(HISTORY_FILE, "r") as f:
-                    hist = json.load(f)
-                
-                if hist:
-                    last_commit_dt = datetime.datetime.strptime(hist[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
-                    hours_since = (datetime.datetime.now() - last_commit_dt).total_seconds() / 3600.0
-                else:
-                    # History exists but is empty
-                    hours_since = 999.0
-                    
-                if hours_since < 12:
-                    console.print(f"[dim]Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.[/dim]")
-                    return
-                elif hours_since < 48:
-                    if random.random() > 0.10:
-                        console.print("[dim]Natural Activity Mode: Skipped this hour to simulate natural gaps (10% execution chance).[/dim]")
-                        return
-                    console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Random trigger unexpectedly hit after {int(hours_since)} hours![/yellow]")
-                else:
-                    console.print(f"[bold cyan]Natural Activity Mode:[/bold cyan] [yellow]Enforcing commit since it's been {int(hours_since)} hours to prevent gaps.[/yellow]")
-            else:
-                # No history file yet
-                console.print("[bold cyan]Natural Activity Mode:[/bold cyan] [dim]No history found. Proceeding with first commit.[/dim]")
-        except Exception as e:
-            console.print(f"[dim]Natural Activity Mode Error (Check history.json): {e}[/dim]")
-            pass
 
-    # NOTE: Daily limit for random activity commits is checked later,
-    # only in the fallback path. Real user changes always push through.
+    # Determine what to do based on mode
+    # If it's a Background run (not forced, no mode), it's strictly Random
+    is_background = not force_run and manual_mode is None
+    
+    target_mode = manual_mode
+    if target_mode is None:
+        if is_background:
+            target_mode = "random"
+        else:
+            # Default fallback for manual if no mode specified (though CLI should provide it)
+            target_mode = "user"
 
+    log_to_file(f"Target mode determined: {target_mode}")
+
+    # --- SHARED CLEANUP ---
     log_to_file("Performing snapshot cleanup...")
     cleanup_expired_snapshots()
 
-    log_to_file(f"Starting repository scan loop for {len(repos)} repositories...")
-    repos_with_changes = []
+    # --- PATH A: USER CHANGES ---
+    if target_mode == "user":
+        console.print("\n[bold cyan]Scanning repositories for your changes...[/bold cyan]")
+        repos_with_changes = []
 
-    for path in repos:
-        try:
-            git_folder = os.path.join(path, ".git")
-            if not os.path.isdir(git_folder):
-                continue
+        for path in repos:
+            try:
+                git_folder = os.path.join(path, ".git")
+                if not os.path.isdir(git_folder):
+                    continue
 
-            # Track which repo we are looking at to detect hangs
-            log_to_file(f"Scanning for changes: {path}")
-            
-            # --- SAFETY FIRST: Run Secret Shield BEFORE anything else ---
-            # This ensures we fix vulnerabilities even if there are no code changes
-            if not shield_sensitive_data(path):
-                log_to_file(f"Skipping {path} due to security risk.")
-                console.print(f"[bold red]Skipping {path} due to security risk (API Key detected).[/bold red]")
-                continue
-
-            result = subprocess.run(
-                ["git", "-C", path, "status", "--porcelain"],
-                capture_output=True,
-                text=True,
-                encoding='utf-8',
-                errors='ignore',
-                stdin=subprocess.DEVNULL,
-                timeout=GIT_TIMEOUT
-            )
-            if result.stdout.strip():
-                repos_with_changes.append(path)
-        except Exception as e:
-            log_to_file(f"Error checking repo {path}: {e}")
-
-    if repos_with_changes:
-        log_to_file(f"Found changes in {len(repos_with_changes)} repositories.")
-        console.print(f"\n[bold green]Found changes in {len(repos_with_changes)} repositories.[/bold green]")
-        for repo_path in repos_with_changes:
-            log_to_file(f"Processing repo: {repo_path}")
-            console.print(f"\n[cyan]>> Committing changes for:[/cyan] [bold]{repo_path}[/bold]")
-            
-            # Take physical backup of files before they get committed by bot
-            console.print(f"[dim]Creating snapshot...[/dim]")
-            snapshot_file = take_snapshot(repo_path)
-            
-            os.chdir(repo_path)
-
-            add_process = subprocess.run(
-                ["git", "add", "."], 
-                capture_output=True, 
-                text=True, 
-                stdin=subprocess.DEVNULL,
-                timeout=GIT_TIMEOUT
-            )
-            if add_process.returncode != 0:
-                console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
-                continue
-
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            fallback_commit_message = f"Auto commit of user changes | {timestamp}"
-            
-            commit_message = generate_ai_commit_message(repo_path, fallback_commit_message, config)
-            
-            console.print(f"[magenta]Commit message:[/magenta] {commit_message}")
-            
-            commit_process = subprocess.run(
-                ["git", "commit", "-m", commit_message],
-                capture_output=True,
-                text=True,
-                stdin=subprocess.DEVNULL,
-                timeout=GIT_TIMEOUT
-            )
-            
-            if "nothing to commit" in commit_process.stdout.lower():
-                console.print("[yellow]Nothing new to commit.[/yellow]")
-                continue
+                log_to_file(f"Scanning for changes: {path}")
                 
-            push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-            
-            if push_process.returncode == 0:
-                log_to_file(f"Successfully pushed changes for {repo_path}")
-                console.print("[green]✔ Pushed successfully.[/green]")
-                log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
-            else:
-                log_to_file(f"Push failed for {repo_path}. Attempting pull/push.")
-                console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
-                pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                if pull_process.returncode == 0:
-                    retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                    if retry_push.returncode == 0:
-                        log_to_file(f"Successfully pulled and pushed for {repo_path}")
-                        console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")
-                        log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
-                    else:
-                        log_to_file(f"Retry push failed for {repo_path}: {retry_push.stderr.strip()}")
-                        console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
+                # Run Secret Shield
+                if not shield_sensitive_data(path):
+                    log_to_file(f"Skipping {path} due to security risk.")
+                    continue
+
+                result = subprocess.run(
+                    ["git", "-C", path, "status", "--porcelain"],
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='ignore',
+                    stdin=subprocess.DEVNULL,
+                    timeout=GIT_TIMEOUT
+                )
+                if result.stdout.strip():
+                    repos_with_changes.append(path)
+            except Exception as e:
+                log_to_file(f"Error checking repo {path}: {e}")
+
+        if repos_with_changes:
+            console.print(f"[bold green]Found changes in {len(repos_with_changes)} repositories.[/bold green]")
+            for repo_path in repos_with_changes:
+                log_to_file(f"Processing manual repo: {repo_path}")
+                console.print(f"\n[cyan]>> Committing changes for:[/cyan] [bold]{repo_path}[/bold]")
+                
+                console.print(f"[dim]Creating snapshot...[/dim]")
+                snapshot_file = take_snapshot(repo_path)
+                
+                os.chdir(repo_path)
+
+                add_process = subprocess.run(["git", "add", "."], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                if add_process.returncode != 0:
+                    console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
+                    continue
+
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                fallback_msg = f"Auto commit of user changes | {timestamp}"
+                commit_message = generate_ai_commit_message(repo_path, fallback_msg, config)
+                
+                console.print(f"[magenta]Commit message:[/magenta] {commit_message}")
+                
+                commit_process = subprocess.run(["git", "commit", "-m", commit_message], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                
+                if "nothing to commit" in commit_process.stdout.lower():
+                    console.print("[yellow]Nothing new to commit.[/yellow]")
+                    continue
+                    
+                push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                
+                if push_process.returncode == 0:
+                    console.print("[green]✔ Pushed successfully.[/green]")
+                    log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
                 else:
-                    subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                    log_to_file(f"Pull failed for {repo_path}: {pull_process.stderr.strip()}")
-                    console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
-                    console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
-    else:
-        # --- Daily limit: cap random activity commits at 5 per day ---
-        if not force_run:
+                    console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
+                    pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                    if pull_process.returncode == 0:
+                        retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                        if retry_push.returncode == 0:
+                            console.print("[bold green]✔ Successfully pulled and pushed.[/bold green]")
+                            log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
+        else:
+            console.print("[yellow]No changes found in any tracked repositories.[/yellow]")
+
+    # --- PATH B: RANDOM ACTIVITY (STRICT) ---
+    elif target_mode == "random":
+        if is_background:
+            # Check Natural activity timing only in background
+            if config.get("schedule_type") == "random_day_time":
+                try:
+                    if os.path.exists(HISTORY_FILE):
+                        with open(HISTORY_FILE, "r") as f:
+                            hist = json.load(f)
+                        if hist:
+                            last_commit_dt = datetime.datetime.strptime(hist[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+                            hours_since = (datetime.datetime.now() - last_commit_dt).total_seconds() / 3600.0
+                            if hours_since < 12:
+                                console.print(f"[dim]Natural Activity Mode: Skipped. Only {int(hours_since)} hours since last commit.[/dim]")
+                                return
+                            elif hours_since < 48 and random.random() > 0.10:
+                                console.print("[dim]Natural Activity Mode: Skipped to simulate natural gaps.[/dim]")
+                                return
+                except Exception:
+                    pass
+
+            # Daily limit for random commits in background
             try:
                 today_str = datetime.datetime.now().strftime("%Y-%m-%d")
                 if os.path.exists(HISTORY_FILE):
                     with open(HISTORY_FILE, "r") as f:
                         hist = json.load(f)
-                    random_today = sum(
-                        1 for entry in hist
-                        if entry.get("timestamp", "").startswith(today_str)
-                        and entry.get("type") == "Random Activity"
-                    )
+                    random_today = sum(1 for e in hist if e.get("timestamp", "").startswith(today_str) and e.get("type") == "Random Activity")
                     if random_today >= 5:
-                        console.print(f"[yellow]Daily limit reached ({random_today}/5 random activity commits today). Skipping.[/yellow]")
+                        console.print(f"[yellow]Daily limit reached ({random_today}/5). Skipping.[/yellow]")
                         return
-                    console.print(f"[dim]Random activity commits today: {random_today}/5[/dim]")
             except Exception:
                 pass
 
-        log_to_file("No user changes found. Performing random activity commit.")
-        console.print("\n[yellow]No user changes. Performing random activity commit.[/yellow]")
+        log_to_file("Executing random activity commit.")
+        console.print("\n[yellow]Executing random activity (heartbeat) commit...[/yellow]")
+        
         repo_path = random.choice(repos)
-
-        log_to_file(f"Selected repository for random activity: {repo_path}")
+        log_to_file(f"Selected repo: {repo_path}")
         console.print(f"[cyan]>> Selected repository:[/cyan] [bold]{repo_path}[/bold]")
 
-        git_folder = os.path.join(repo_path, ".git")
-
-        if not os.path.isdir(git_folder):
-            log_to_file(f"Error: Selected folder is not a git repository: {repo_path}")
-            console.print(f"[bold red]Selected folder is not a git repository:[/bold red] {repo_path}")
+        if not os.path.isdir(os.path.join(repo_path, ".git")):
+            console.print(f"[bold red]Not a git repository:[/bold red] {repo_path}")
             return
 
         console.print("[dim]Creating snapshot...[/dim]")
         snapshot_file = take_snapshot(repo_path)
 
         os.chdir(repo_path)
-
         with open(SAFE_FILE, "a") as f:
             f.write(f"automation activity: {datetime.datetime.now()}\n")
 
-        commit_message = random.choice(commit_messages)
+        commit_msg = random.choice(commit_messages)
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        full_msg = f"{commit_msg} | {timestamp}"
 
-        commit_message = f"{commit_message} | {timestamp}"
+        console.print(f"[magenta]Commit message:[/magenta] {full_msg}")
 
-        console.print(f"[magenta]Commit message:[/magenta] {commit_message}")
-
-        add_process = subprocess.run(
-            ["git", "add", SAFE_FILE], 
-            capture_output=True, 
-            text=True, 
-            stdin=subprocess.DEVNULL,
-            timeout=GIT_TIMEOUT
-        )
-        if add_process.returncode != 0:
-            log_to_file(f"Git add failed for random activity in {repo_path}")
-            console.print(f"[bold red]Git add failed:[/bold red] {add_process.stderr.strip()}")
-            return
-
-        commit_process = subprocess.run(
-            ["git", "commit", "-m", commit_message],
-            capture_output=True,
-            text=True,
-            stdin=subprocess.DEVNULL,
-            timeout=GIT_TIMEOUT
-        )
+        subprocess.run(["git", "add", SAFE_FILE], capture_output=True, timeout=GIT_TIMEOUT)
+        commit_process = subprocess.run(["git", "commit", "-m", full_msg], capture_output=True, text=True, timeout=GIT_TIMEOUT)
 
         if "nothing to commit" in commit_process.stdout.lower():
-            log_to_file(f"Nothing new to commit (random activity) for {repo_path}")
             console.print("[yellow]Nothing new to commit.[/yellow]")
             return
 
-        push_process = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+        push_process = subprocess.run(["git", "push"], capture_output=True, text=True, timeout=GIT_TIMEOUT)
 
         if push_process.returncode == 0:
-            log_to_file(f"Successfully pushed random activity for {repo_path}")
             console.print("[green]✔ Pushed successfully.[/green]")
-            log_commit(repo_path, commit_message, is_random=True, snapshot_file=snapshot_file)
+            log_commit(repo_path, full_msg, is_random=True, snapshot_file=snapshot_file)
         else:
-            log_to_file(f"Random activity push failed for {repo_path}. Attempting pull/push.")
             console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
-            pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-            if pull_process.returncode == 0:
-                retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                if retry_push.returncode == 0:
-                    log_to_file(f"Successfully pulled and pushed (random activity) for {repo_path}")
-                    console.print("[bold green]✔ Successfully pulled remote changes and pushed.[/bold green]")
-                    log_commit(repo_path, commit_message, is_random=True, snapshot_file=snapshot_file)
-                else:
-                    log_to_file(f"Random activity retry push failed for {repo_path}: {retry_push.stderr.strip()}")
-                    console.print(f"[bold red]Git Push Retry Error:[/bold red] {retry_push.stderr.strip()}")
-            else:
-                subprocess.run(["git", "merge", "--abort"], capture_output=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                log_to_file(f"Random activity pull failed for {repo_path}: {pull_process.stderr.strip()}")
-                console.print(f"[bold red]Git Error:[/bold red] {push_process.stderr.strip()}")
-                console.print(f"[bold red]Git Pull Merge Error:[/bold red] {pull_process.stderr.strip()}")
+            subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, timeout=GIT_TIMEOUT)
+            retry_push = subprocess.run(["git", "push"], capture_output=True, timeout=GIT_TIMEOUT)
+            if retry_push.returncode == 0:
+                console.print("[bold green]✔ Successfully pulled and pushed.[/bold green]")
+                log_commit(repo_path, full_msg, is_random=True, snapshot_file=snapshot_file)
+
 
 if __name__ == "__main__":
     try:

@@ -1,4 +1,4 @@
-# 🚀 AutoCommitBot (v1.3.0)
+# 🚀 AutoCommitBot (v1.3.1)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](#license)
@@ -24,6 +24,7 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 * **AI Commit Messages** — Generates meaningful, context-aware commits instead of generic updates
 * **Security (Secret Shield)** — Prevents accidental exposure of sensitive files and credentials
 * **Natural Activity Mode** — Simulates realistic developer commit patterns
+* **Manual vs. Background Control** — **[NEW]** Choose between interactive manual runs and strictly automated background heartbeats
 * **Backup & Restore** — Enables complete rollback of local and remote states
 * **Automated Execution** — Runs seamlessly in the background on system logon
 
@@ -36,6 +37,8 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 * **GitHub CLI Auth** — Identity verified through your active `gh` session; repos fetched & cloned via `gh` automatically
 * **AI Commit Generation** — Context-aware commit messages using Gemini with model fallback
 * **Security Layer (Secret Shield)** — Automatic protection against sensitive file and credential exposure
+* **Interactive Manual Mode** — **[NEW]** Choose whether to commit real work or perform a Heartbeat commit manually
+* **Strict Background Heartbeats** — **[NEW]** Background tasks now strictly perform "Random Activity" commits to maintain streaks without cluttering code history
 * **Scheduling Engine** — Supports logon, fixed-time, and natural activity-based execution
 * **Backup & Restore** — Pre-commit snapshots with full local and remote rollback capability
 * **Dashboard & Analytics** — CLI-based insights into commit history and activity
@@ -61,7 +64,7 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 
 ### 🕐 Scheduling System
 
-* Logon trigger (Windows Task Scheduler) — **5/day cap on random activity only; real code changes always push through**
+* Logon trigger (Windows Task Scheduler) — **Strictly performs Random Activity (Heartbeat) commits in the background**
 * Fixed-time daily scheduling
 * Randomized daily execution (9 AM – 11 PM)
 * Natural Activity Mode (probabilistic commits with 48h enforcement)
@@ -73,8 +76,8 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 ### 🔁 Commit Engine
 
 * Smart change detection across repositories
-* Commits real user changes with descriptive messages
-* Generates fallback activity commits when idle
+* **Manual Run:** Interactive menu to choose between User Changes vs. Heartbeat
+* **Background Run:** Strictly Heartbeat (Random Activity) mode
 * Automatic pull → merge → push workflow
 * Push retry logic on failure
 
@@ -126,7 +129,7 @@ AutoCommitBot is an intelligent CLI tool for developers who want a consistent co
 1. Verifies your GitHub identity via the GitHub CLI (`gh`)
 2. Detects changes in tracked repositories
 3. Syncs with remote using `git pull`
-4. Analyzes `git diff` using Gemini AI
+4. Analyzes `git diff` using Gemini AI (in Manual mode)
 5. Generates a contextual commit message
 6. Runs security checks (Secret Shield)
 7. Commits and pushes changes
@@ -247,7 +250,7 @@ All commands follow the pattern: `autocommit <command>`
 
 | Command | What it does |
 |---|---|
-| `autocommit run` | Commit & push all changes now |
+| `autocommit run` | **[Interactive]** Commit changes or heartbeat now |
 | `autocommit enable` | Register the Windows auto-start task |
 | `autocommit disable` | Remove the Windows auto-start task |
 
