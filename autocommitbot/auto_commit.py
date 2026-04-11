@@ -178,7 +178,7 @@ def internet_available():
         return False
 
 
-def wait_for_internet(max_attempts=30):
+def wait_for_internet(max_attempts=60):
     log_to_file("Checking internet connection...")
     console.print("[dim]Checking internet connection...[/dim]")
 
@@ -188,7 +188,7 @@ def wait_for_internet(max_attempts=30):
     attempts = 0
     while not internet_available():
         if attempts >= max_attempts:
-            log_to_file("Internet not available after 5 minutes. Skipping run.")
+            log_to_file("Internet not available after 10 minutes. Skipping run.")
             console.print("[bold red]Internet not available. Skipping run.[/bold red]")
             return False
 
@@ -404,7 +404,7 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
         
     return fallback_message
 
-def run_bot(force_run=False, manual_mode=None):
+def run_bot(force_run=False, manual_mode=None, skip_internet_check=False):
     """
     Main bot execution logic.
     
@@ -413,10 +413,11 @@ def run_bot(force_run=False, manual_mode=None):
     - 'user': Explicitly scan and commit user changes.
     - 'random': Explicitly perform a random activity commit.
     """
-    log_to_file(f"Bot execution started (force_run={force_run}, manual_mode={manual_mode})")
+    log_to_file(f"Bot execution started (force_run={force_run}, manual_mode={manual_mode}, skip_internet_check={skip_internet_check})")
     
-    if not wait_for_internet():
-        return
+    if not skip_internet_check:
+        if not wait_for_internet():
+            return
 
     if not os.path.exists(CONFIG_FILE):
         log_to_file("Error: Configuration file not found.")
@@ -607,11 +608,40 @@ def run_bot(force_run=False, manual_mode=None):
                 log_commit(repo_path, full_msg, is_random=True, snapshot_file=snapshot_file)
 
 
-if __name__ == "__main__":
+import ctypes
+def spawn_visible_worker():
+    """Lauches a new minimized console window to perform the background work visibly."""
+    executable = sys.executable
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # 7 = SW_SHOWMINNOACTIVE
     try:
-        run_bot()
+        ctypes.windll.shell32.ShellExecuteW(None, "open", executable, "-m autocommitbot.auto_commit --worker", project_root, 7)
     except Exception as e:
-        import traceback
-        log_to_file(f"CRITICAL CRASH: {e}")
-        log_to_file(traceback.format_exc())
-        print(f"CRITICAL ERROR: {e}")
+        log_to_file(f"Failed to spawn visible worker: {e}")
+
+if __name__ == "__main__":
+    if "--worker" in sys.argv:
+        # STAGE 2: Visible work (Launched from hidden process)
+        try:
+            # Re-run bot logic in random heartbeat mode, bypass internet check since watcher already did it
+            run_bot(force_run=True, manual_mode="random", skip_internet_check=True)
+            
+            console.print("\n[bold green]🚀 Push complete![/bold green]")
+            console.print("[white]Please check your GitHub profile to verify your contribution graph.[/white]")
+            input("\nPress Enter to close this window...")
+        except Exception as e:
+            log_to_file(f"Worker Error: {e}")
+            print(f"ERROR: {e}")
+            time.sleep(10)
+    else:
+        # STAGE 1: Silent detection (Entry point for Task Scheduler)
+        try:
+            # We only do Stage 1 if it's a background task (no --worker flag)
+            # wait_for_internet() is now 10 minutes
+            if wait_for_internet():
+                spawn_visible_worker()
+        except Exception as e:
+            log_to_file(f"Watcher Error: {e}")
+            import traceback
+            log_to_file(traceback.format_exc())

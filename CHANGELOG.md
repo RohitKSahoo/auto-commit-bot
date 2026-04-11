@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.4.0] - 2026-04-11
+
+### Added
+- **Activity Sync Reporter** — Implemented a more transparent background behavior. A "Silent Watcher" now handles internet detection (up to 10 minutes) invisibly. Once online, a **minimized console window** pops up to show commit progress and success.
+- **Verification Prompt** — The background sync window now stays open minimized after a successful push, prompting the user to check their GitHub contribution graph to verify the activity.
+- **Extended Internet Window** — Increased the silent internet check duration from 5 minutes to **10 minutes** for better reliability on slow connections.
+
 ## [1.3.2] - 2026-04-11
 
 ### Fixed
