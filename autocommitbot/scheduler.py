@@ -50,7 +50,7 @@ def get_schedule_settings():
     return "onlogon", None
 
 def create_startup_task():
-    """Create a Windows Task Scheduler task using PowerShell for robust path handling."""
+    """Create a Windows Task Scheduler task using modern PowerShell commands to bypass legacy path limits."""
     if not is_admin():
         request_admin_and_exit()
         return
@@ -58,51 +58,58 @@ def create_startup_task():
     python_path = sys.executable
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # NEW LOG: We redirect stderr to a separate file so users can see startup crashes (e.g., ModuleNotFoundError)
+    # Error log path
     error_log = os.path.join(os.path.expanduser("~"), ".autocommitbot", "bot_error.log")
-
-    # We use PowerShell for the task command because it handles spaces and drive letters much better than cmd.exe
-    # Added $env:PYTHONUTF8=1 to handle Unicode (like checkmarks) in redirected output
-    ps_task_cmd = (
-        f"powershell -nop -w h -c "
-        f"\"$env:PYTHONUTF8=1; sleep 10; cd '{project_root}'; "
-        f"& '{python_path}' -m autocommitbot.auto_commit >> '{error_log}' 2>&1\""
-    )
+    os.makedirs(os.path.dirname(error_log), exist_ok=True)
 
     schedule_type, schedule_time = get_schedule_settings()
 
+    # 1. Define the Trigger logic for PowerShell
+    if schedule_type == "time" and schedule_time:
+        ps_trigger = f"New-ScheduledTaskTrigger -DailyAt '{schedule_time}'"
+    elif schedule_type == "random_day_time":
+        # Run every hour for random checks
+        ps_trigger = "New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 60)"
+    else:
+        ps_trigger = "New-ScheduledTaskTrigger -AtLogon"
+
+    # 2. Define the Action logic
+    # We use single quotes for the inner command and properly escape them for PS
+    inner_cmd = (
+        f"$env:PYTHONUTF8=1; sleep 10; cd '{project_root}'; "
+        f"& '{python_path}' -m autocommitbot.auto_commit >> '{error_log}' 2>&1"
+    )
+    # Double the single quotes for PowerShell escaping
+    escaped_inner_cmd = inner_cmd.replace("'", "''")
+    
+    ps_action = f"New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-nop -w h -c \"{escaped_inner_cmd}\"'"
+
+    # 3. Define Settings (Batteries, etc.)
+    ps_settings = "New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable"
+
+    # 4. Combine into a registration command
+    register_cmd = (
+        f"$Action = {ps_action}; "
+        f"$Trigger = {ps_trigger}; "
+        f"$Settings = {ps_settings}; "
+        f"Register-ScheduledTask -Action $Action -Trigger $Trigger -Settings $Settings -TaskName '{TASK_NAME}' -RunLevel Highest -Force"
+    )
+
     print(f"Creating Task Scheduler task: {TASK_NAME} ({schedule_type})...")
 
-    # schtasks command to create a basic task with highest privileges
-    schtasks_cmd = [
-        "schtasks", "/Create",
-        "/TN", TASK_NAME,
-        "/TR", ps_task_cmd,
-        "/RL", "HIGHEST",
-        "/F"
-    ]
-
-    if schedule_type == "time" and schedule_time:
-        schtasks_cmd.extend(["/SC", "DAILY", "/ST", schedule_time])
-        print(f"Scheduling to run daily at: {schedule_time}")
-    elif schedule_type == "random_day_time":
-        schtasks_cmd.extend(["/SC", "MINUTE", "/MO", "60"])
-        print("Scheduling to run periodically in the background.")
-    else:
-        schtasks_cmd.extend(["/SC", "ONLOGON"])
-        print("Scheduling to run on Logon.")
-
     try:
-        subprocess.run(schtasks_cmd, capture_output=True, text=True, check=True)
+        # We run the whole registration script via PowerShell to bypass schtasks.exe limits
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", register_cmd],
+            capture_output=True,
+            text=True,
+            check=True
+        )
         print("Startup task scheduled successfully.")
         
-        # Configure battery settings via PowerShell
-        ps_settings = f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries)"
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_settings], capture_output=True, text=True)
-
     except subprocess.CalledProcessError as e:
-        print("Failed to create scheduled task:")
-        print(e.stderr.strip())
+        print("Failed to create scheduled task via PowerShell:")
+        print(e.stderr.strip() or e.stdout.strip())
 
 
 def remove_startup_task():

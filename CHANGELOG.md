@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.3.2] - 2026-04-11
+
+### Fixed
+- **Task Scheduler Length Limits** — Resolved a critical issue where long installation paths could cause `schtasks.exe` to fail with a legacy 261-character limit error. The bot now uses modern PowerShell task registration (`Register-ScheduledTask`) which supports much longer command strings.
+
 ## [1.3.1] - 2026-04-11
 
 ### Added
