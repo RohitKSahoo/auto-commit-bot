@@ -7,8 +7,12 @@ import json
 import random
 import zipfile
 import requests
-import re
 import sys
+import re
+
+# Enforce non-interactive environment for background Git automation
+os.environ["GIT_TERMINAL_PROMPT"] = "0"
+os.environ["GCM_INTERACTIVE"] = "never"
 from rich.console import Console
 
 # Force UTF-8 and terminal colors even when redirected to capture logs better
@@ -407,22 +411,19 @@ def generate_ai_commit_message(repo_path, fallback_message, config):
 def run_bot(force_run=False, manual_mode=None, skip_internet_check=False):
     """
     Main bot execution logic.
-    
-    manual_mode options:
-    - None: System chooses based on force_run (Default for background).
-    - 'user': Explicitly scan and commit user changes.
-    - 'random': Explicitly perform a random activity commit.
+    Returns the number of successful pushes.
     """
+    push_count = 0
     log_to_file(f"Bot execution started (force_run={force_run}, manual_mode={manual_mode}, skip_internet_check={skip_internet_check})")
     
     if not skip_internet_check:
         if not wait_for_internet():
-            return
+            return 0
 
     if not os.path.exists(CONFIG_FILE):
         log_to_file("Error: Configuration file not found.")
         console.print("[bold red]Configuration file not found.[/bold red]")
-        return
+        return 0
 
     log_to_file("Loading configuration...")
     with open(CONFIG_FILE, "r") as f:
@@ -433,7 +434,7 @@ def run_bot(force_run=False, manual_mode=None, skip_internet_check=False):
     if not repos:
         log_to_file("No repositories configured.")
         console.print("[bold red]No repositories configured.[/bold red]")
-        return
+        return 0
 
     # Determine what to do based on mode
     # If it's a Background run (not forced, no mode), it's strictly Random
@@ -518,14 +519,22 @@ def run_bot(force_run=False, manual_mode=None, skip_internet_check=False):
                 if push_process.returncode == 0:
                     console.print("[green]✔ Pushed successfully.[/green]")
                     log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
+                    push_count += 1
                 else:
                     console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
                     pull_process = subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                    if pull_process.returncode == 0:
-                        retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
-                        if retry_push.returncode == 0:
-                            console.print("[bold green]✔ Successfully pulled and pushed.[/bold green]")
-                            log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
+                    
+                    retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+                    if retry_push.returncode == 0:
+                        console.print("[bold green]✔ Successfully pulled and pushed.[/bold green]")
+                        log_commit(repo_path, commit_message, is_random=False, snapshot_file=snapshot_file)
+                        push_count += 1
+                    else:
+                        console.print(f"[bold red]Retry push failed for {repo_path}[/bold red]")
+                        # Check if authentication was the issue
+                        if "could not read Username" in retry_push.stderr or "credential" in retry_push.stderr:
+                             console.print("[yellow]Tip: Run 'autocommit setup' to fix authentication issues.[/yellow]")
+                        log_to_file(f"Push error for {repo_path}: {retry_push.stderr}")
         else:
             console.print("[yellow]No changes found in any tracked repositories.[/yellow]")
 
@@ -599,13 +608,24 @@ def run_bot(force_run=False, manual_mode=None, skip_internet_check=False):
         if push_process.returncode == 0:
             console.print("[green]✔ Pushed successfully.[/green]")
             log_commit(repo_path, full_msg, is_random=True, snapshot_file=snapshot_file)
+            push_count += 1
         else:
             console.print("[yellow]Push failed. Retrying with pull...[/yellow]")
             subprocess.run(["git", "pull", "--no-rebase", "--no-edit", "-s", "recursive", "-X", "ours"], capture_output=True, timeout=GIT_TIMEOUT)
-            retry_push = subprocess.run(["git", "push"], capture_output=True, timeout=GIT_TIMEOUT)
+            retry_push = subprocess.run(["git", "push"], capture_output=True, text=True, timeout=GIT_TIMEOUT)
             if retry_push.returncode == 0:
                 console.print("[bold green]✔ Successfully pulled and pushed.[/bold green]")
                 log_commit(repo_path, full_msg, is_random=True, snapshot_file=snapshot_file)
+                push_count += 1
+            else:
+                console.print(f"[bold red]Retry push failed for {repo_path}[/bold red]")
+                # Check for common authentication errors
+                stderr_output = retry_push.stderr if retry_push.stderr else ""
+                if "could not read Username" in stderr_output or "credential" in stderr_output:
+                    console.print("[yellow]Tip: Run 'autocommit setup' to fix authentication issues.[/yellow]")
+                log_to_file(f"Push error for {repo_path}: {stderr_output}")
+
+    return push_count
 
 
 import ctypes
@@ -625,10 +645,15 @@ if __name__ == "__main__":
         # STAGE 2: Visible work (Launched from hidden process)
         try:
             # Re-run bot logic in random heartbeat mode, bypass internet check since watcher already did it
-            run_bot(force_run=True, manual_mode="random", skip_internet_check=True)
+            success_count = run_bot(force_run=True, manual_mode="random", skip_internet_check=True)
             
-            console.print("\n[bold green]🚀 Push complete![/bold green]")
-            console.print("[white]Please check your GitHub profile to verify your contribution graph.[/white]")
+            if success_count > 0:
+                console.print(f"\n[bold green]🚀 {success_count} Push(es) complete![/bold green]")
+                console.print("[white]Your contribution graph should update shortly.[/white]")
+            else:
+                console.print("\n[bold yellow]⚠ No pushes were successful.[/bold yellow]")
+                console.print("[white]Please check the logs or run manually to troubleshoot.[/white]")
+                
             input("\nPress Enter to close this window...")
         except Exception as e:
             log_to_file(f"Worker Error: {e}")

@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.4.1] - 2026-04-12
+
+### Fixed
+- **Reliable Git Authentication** — Integrated `gh auth setup-git` into the setup wizard. This configures Git to use the GitHub CLI's authentication token, resolving "Missing Credentials" errors that often occur in the background after a system restart.
+- **Accurate Push Reporting** — Fixed a bug where the bot would report "Push complete!" even if the push failed silently in the background. The bot now accurately tracks successful pushes and reports failures with a troubleshooting tip.
+- **Non-Interactive Environment Enforcement** — Explicitly disabled interactive Git prompts (`GIT_TERMINAL_PROMPT=0`) to prevent the background process from hanging indefinitely while waiting for a username/password.
+- **Improved Error Logging** — Git error messages are now captured and saved to the bot's logs, making it significantly easier to diagnose connectivity or permission issues.
+
 ## [1.4.0] - 2026-04-11
 
 ### Added

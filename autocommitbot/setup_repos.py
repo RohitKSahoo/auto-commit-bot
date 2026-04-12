@@ -6,7 +6,7 @@ import questionary
 import random
 
 from autocommitbot.scheduler import create_startup_task
-from autocommitbot.gh_auth import require_gh_auth, get_user_repos
+from autocommitbot.gh_auth import require_gh_auth, get_user_repos, setup_git_credentials
 
 from autocommitbot.paths import CONFIG_FILE
 
@@ -160,8 +160,10 @@ def run_setup():
             # require_gh_auth() exits the process with a friendly message if
             # gh is missing or the user is not authenticated — no manual input.
             username = require_gh_auth()
-
-            console.print("[dim]📦 Fetching your repositories...[/dim]")
+            
+            # Setup Git credentials immediately after GH auth
+            step = 1.5
+            continue
             raw_repos = get_user_repos(username)
 
             # Normalise to the shape the rest of setup expects:
@@ -175,6 +177,15 @@ def run_setup():
                 )
                 return
 
+            step = 2
+
+        # ── Step 1.5: Setup Git Credentials ──────────────────────────────────
+        elif step == 1.5:
+            console.print("[dim]Configuring Git to use GitHub CLI for authentication...[/dim]")
+            if setup_git_credentials():
+                console.print("[green]✔ Git credentials configured.[/green]")
+            else:
+                console.print("[yellow]⚠ Could not automatically configure Git credentials.[/yellow]")
             step = 2
 
         # ── Step 2: Repo selection ────────────────────────────────────────────

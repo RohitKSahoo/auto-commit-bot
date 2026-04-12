@@ -146,3 +146,17 @@ def require_gh_auth() -> str:
     assert username is not None  # sys.exit(1) above handles the None case
     console.print(f"[bold green]✔ Logged in as:[/bold green] [cyan]{username}[/cyan]\n")
     return username
+
+
+def setup_git_credentials() -> bool:
+    """
+    Configure Git to use the GitHub CLI as its credential helper.
+    This ensures automated pushes work seamlessly.
+    """
+    try:
+        # This is equivalent to `gh auth setup-git` but more direct
+        # We also check if it's already configured to avoid redundant output
+        result = _run(["gh", "auth", "setup-git"])
+        return result.returncode == 0
+    except Exception:
+        return False
