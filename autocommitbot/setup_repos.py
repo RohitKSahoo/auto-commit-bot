@@ -164,6 +164,16 @@ def run_setup():
             # Setup Git credentials immediately after GH auth
             step = 1.5
             continue
+
+        # ── Step 1.5: Setup Git Credentials ──────────────────────────────────
+        elif step == 1.5:
+            console.print("[dim]Configuring Git to use GitHub CLI for authentication...[/dim]")
+            if setup_git_credentials():
+                console.print("[green]✔ Git credentials configured.[/green]")
+            else:
+                console.print("[yellow]⚠ Could not automatically configure Git credentials.[/yellow]")
+            
+            console.print("[dim]📦 Fetching your repositories...[/dim]")
             raw_repos = get_user_repos(username)
 
             # Normalise to the shape the rest of setup expects:
@@ -176,16 +186,7 @@ def run_setup():
                     "Create at least one repo on GitHub, then re-run setup."
                 )
                 return
-
-            step = 2
-
-        # ── Step 1.5: Setup Git Credentials ──────────────────────────────────
-        elif step == 1.5:
-            console.print("[dim]Configuring Git to use GitHub CLI for authentication...[/dim]")
-            if setup_git_credentials():
-                console.print("[green]✔ Git credentials configured.[/green]")
-            else:
-                console.print("[yellow]⚠ Could not automatically configure Git credentials.[/yellow]")
+            
             step = 2
 
         # ── Step 2: Repo selection ────────────────────────────────────────────

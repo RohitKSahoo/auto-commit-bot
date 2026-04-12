@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 - No unreleased changes
 
+## [1.4.2] - 2026-04-12
+
+### Fixed
+- **Setup Loop Bug** — Fixed a regression in the setup wizard where the repository fetching step was accidentally skipped after the new Git credential configuration step.
+
 ## [1.4.1] - 2026-04-12
 
 ### Fixed
